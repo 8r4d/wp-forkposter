@@ -1,0 +1,72 @@
+/* Colors come from the theme (currentColor) so the labels fit light and dark themes. */
+
+.forkposter-badge {
+	display: inline-block;
+	margin-inline-start: 0.4em;
+	padding: 0.15em 0.6em;
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	font-size: 0.55em;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	line-height: 1.4;
+	text-transform: uppercase;
+	vertical-align: middle;
+	white-space: nowrap;
+	opacity: 0.7;
+}
+
+.forkposter-notice .forkposter-badge {
+	margin-inline: 0 0.5em;
+	font-size: 0.7em;
+}
+
+.forkposter-notice {
+	margin: 0 0 1.5em;
+	padding: 0.75em 1em;
+	border-inline-start: 4px solid currentColor;
+	background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.forkposter-notice p {
+	margin: 0;
+}
+
+.forkposter-notice p + p,
+.forkposter-notice__note {
+	margin-top: 0.5em;
+}
+
+.forkposter-notice__note {
+	font-style: italic;
+}
+
+.forkposter-notice--list {
+	margin-bottom: 1em;
+	padding: 0.4em 0.75em;
+	border-inline-start-width: 3px;
+	font-size: 0.9em;
+}
+
+.forkposter-history {
+	margin: 1.5em 0;
+}
+
+.forkposter-history__heading {
+	margin: 0 0 0.25em;
+	font-weight: 600;
+}
+
+.forkposter-history ol {
+	margin: 0;
+	padding-inline-start: 1.5em;
+}
+
+.forkposter-history__current {
+	font-weight: 600;
+}
+
+.forkposter-history__date {
+	opacity: 0.7;
+	font-size: 0.9em;
+}
