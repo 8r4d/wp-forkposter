@@ -18,7 +18,7 @@ function forkposter_feed_title( $title ) {
 		return $title;
 	}
 
-	return '[' . esc_html( forkposter_setting( 'old_label' ) ) . '] ' . $title;
+	return '[' . esc_html( forkposter_badge_text( forkposter_setting( 'old_label' ), $post->ID ) ) . '] ' . $title;
 }
 
 add_filter( 'the_content_feed', 'forkposter_feed_content' );

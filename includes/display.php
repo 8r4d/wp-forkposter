@@ -20,7 +20,7 @@ function forkposter_format_notice( string $template, WP_Post $target ): string {
 		'<a href="%s">%s</a>',
 		esc_url( get_permalink( $target ) ),
 		// Use the raw title so our own the_title filter can't add a badge inside the link.
-		esc_html( $target->post_title )
+		esc_html( forkposter_title_with_version( $target ) )
 	);
 
 	return strtr(
@@ -47,7 +47,7 @@ function forkposter_notices_html( int $post_id, string $context = 'single' ): st
 	if ( $latest ) {
 		$html .= sprintf(
 			'<p class="forkposter-notice__line"><span class="forkposter-badge">%s</span> %s</p>',
-			esc_html( forkposter_setting( 'old_label' ) ),
+			esc_html( forkposter_badge_text( forkposter_setting( 'old_label' ), $post_id ) ),
 			forkposter_format_notice( forkposter_setting( 'superseded_notice' ), $latest )
 		);
 	}
@@ -90,7 +90,15 @@ function forkposter_badge_html( int $post_id ): string {
 		return '';
 	}
 
-	return sprintf( ' <span class="forkposter-badge %s">%s</span>', esc_attr( $class ), esc_html( $label ) );
+	return sprintf( ' <span class="forkposter-badge %s">%s</span>', esc_attr( $class ), esc_html( forkposter_badge_text( $label, $post_id ) ) );
+}
+
+/**
+ * A badge label with the post's version number, if any: "Earlier version · v.1".
+ */
+function forkposter_badge_text( string $label, int $post_id ): string {
+	$version = forkposter_version_label( $post_id );
+	return '' === $version ? $label : $label . ' · ' . $version;
 }
 
 /**
@@ -231,7 +239,7 @@ function forkposter_history_shortcode( $atts ): string {
 	foreach ( $lineage as $version ) {
 		$label = sprintf(
 			'%s <span class="forkposter-history__date">%s</span>',
-			esc_html( $version->post_title ),
+			esc_html( forkposter_title_with_version( $version ) ),
 			esc_html( get_the_date( '', $version ) )
 		);
 

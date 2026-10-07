@@ -14,6 +14,7 @@ const FORKPOSTER_META_PARENT        = '_forkposter_parent';
 const FORKPOSTER_META_SUPERSEDED_BY = '_forkposter_superseded_by';
 const FORKPOSTER_META_NOTE          = '_forkposter_note';
 const FORKPOSTER_META_ADDED_TAG     = '_forkposter_added_tag';
+const FORKPOSTER_META_VERSION       = '_forkposter_version';
 const FORKPOSTER_TAXONOMY           = 'forkposter_state';
 const FORKPOSTER_TERM_SUPERSEDED    = 'superseded';
 
@@ -156,4 +157,59 @@ function forkposter_get_lineage( int $post_id ): array {
 	}
 
 	return array_merge( $ancestors, array( $post ), $descendants );
+}
+
+function forkposter_versions_enabled(): bool {
+	return (bool) forkposter_setting( 'show_versions' );
+}
+
+/**
+ * The version number stored on a post ("1", "2.0", ...), or ''.
+ */
+function forkposter_get_version( int $post_id ): string {
+	return (string) get_post_meta( $post_id, FORKPOSTER_META_VERSION, true );
+}
+
+function forkposter_set_version( int $post_id, string $version ) {
+	$version = substr( trim( sanitize_text_field( $version ) ), 0, 20 );
+	if ( '' === $version ) {
+		delete_post_meta( $post_id, FORKPOSTER_META_VERSION );
+	} else {
+		update_post_meta( $post_id, FORKPOSTER_META_VERSION, $version );
+	}
+}
+
+/**
+ * A post's version formatted for display ("v.2.0"), or '' when version numbers
+ * are off or the post has none.
+ */
+function forkposter_version_label( int $post_id ): string {
+	$version = forkposter_versions_enabled() ? forkposter_get_version( $post_id ) : '';
+	if ( '' === $version ) {
+		return '';
+	}
+
+	$format = (string) forkposter_setting( 'version_format' );
+	return false === strpos( $format, '{version}' ) ? $version : str_replace( '{version}', $version, $format );
+}
+
+/**
+ * A post's title with its version label appended: "Remote work (v.2)".
+ */
+function forkposter_title_with_version( WP_Post $post ): string {
+	$title = $post->post_title ?: __( '(no title)', 'forkposter' );
+	$label = forkposter_version_label( $post->ID );
+	return '' === $label ? $title : sprintf( '%s (%s)', $title, $label );
+}
+
+/**
+ * The number after $version: bumps the first number and zeroes the rest,
+ * keeping the format ("1" -> "2", "2.0" -> "3.0", "1.4.2" -> "2.0.0").
+ * Returns '' when $version has no number in it.
+ */
+function forkposter_next_version( string $version ): string {
+	if ( ! preg_match( '/^(\D*)(\d+)(.*)$/s', $version, $m ) ) {
+		return '';
+	}
+	return $m[1] . ( (int) $m[2] + 1 ) . preg_replace( '/\d+/', '0', $m[3] );
 }

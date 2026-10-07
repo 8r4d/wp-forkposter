@@ -33,12 +33,25 @@ function forkposter_based_on_schema( WP_Post $post ): ?array {
 		return null;
 	}
 
-	return array(
-		'@type'         => 'BlogPosting',
-		'url'           => get_permalink( $parent ),
-		'headline'      => wp_strip_all_tags( $parent->post_title ),
-		'datePublished' => get_post_time( DATE_W3C, true, $parent ),
+	return forkposter_with_schema_version(
+		array(
+			'@type'         => 'BlogPosting',
+			'url'           => get_permalink( $parent ),
+			'headline'      => wp_strip_all_tags( $parent->post_title ),
+			'datePublished' => get_post_time( DATE_W3C, true, $parent ),
+		),
+		$parent->ID
 	);
+}
+
+/**
+ * Add schema.org's "version" property when version numbers are on and the post has one.
+ */
+function forkposter_with_schema_version( array $node, int $post_id ): array {
+	if ( forkposter_versions_enabled() && '' !== forkposter_get_version( $post_id ) ) {
+		$node['version'] = forkposter_get_version( $post_id );
+	}
+	return $node;
 }
 
 add_action( 'wp_head', 'forkposter_version_links', 5 );
@@ -100,6 +113,7 @@ function forkposter_add_based_on_to_nodes( array $nodes ): array {
 		}
 		$types = (array) $node['@type'];
 		if ( array_intersect( $types, array( 'Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'ScholarlyArticle' ) ) ) {
+			$node              = forkposter_with_schema_version( $node, $post->ID );
 			$node['isBasedOn'] = $base;
 		}
 	}
@@ -135,19 +149,22 @@ function forkposter_print_schema() {
 		return;
 	}
 
-	$schema = array(
-		'@context'      => 'https://schema.org',
-		'@type'         => 'BlogPosting',
-		'url'           => get_permalink( $post ),
-		'headline'      => wp_strip_all_tags( $post->post_title ),
-		'datePublished' => get_post_time( DATE_W3C, true, $post ),
-		'dateModified'  => get_post_modified_time( DATE_W3C, true, $post ),
-		'author'        => array(
-			'@type' => 'Person',
-			'name'  => get_the_author_meta( 'display_name', $post->post_author ),
-			'url'   => get_author_posts_url( $post->post_author ),
+	$schema = forkposter_with_schema_version(
+		array(
+			'@context'      => 'https://schema.org',
+			'@type'         => 'BlogPosting',
+			'url'           => get_permalink( $post ),
+			'headline'      => wp_strip_all_tags( $post->post_title ),
+			'datePublished' => get_post_time( DATE_W3C, true, $post ),
+			'dateModified'  => get_post_modified_time( DATE_W3C, true, $post ),
+			'author'        => array(
+				'@type' => 'Person',
+				'name'  => get_the_author_meta( 'display_name', $post->post_author ),
+				'url'   => get_author_posts_url( $post->post_author ),
+			),
+			'isBasedOn'     => $base,
 		),
-		'isBasedOn'     => $base,
+		$post->ID
 	);
 
 	echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG ) . "</script>\n";

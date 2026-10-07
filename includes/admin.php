@@ -44,12 +44,15 @@ function forkposter_post_states( array $states, WP_Post $post ): array {
 		return $states;
 	}
 
+	$version = forkposter_version_label( $post->ID );
+	$suffix  = '' === $version ? '' : ' · ' . $version;
+
 	if ( forkposter_is_superseded( $post->ID ) ) {
-		$states['forkposter_superseded'] = esc_html( forkposter_setting( 'old_label' ) );
+		$states['forkposter_superseded'] = esc_html( forkposter_setting( 'old_label' ) . $suffix );
 	} elseif ( forkposter_get_parent_id( $post->ID ) ) {
 		$states['forkposter_fork'] = 'publish' === $post->post_status
-			? esc_html( forkposter_setting( 'new_label' ) )
-			: esc_html__( 'Fork', 'forkposter' );
+			? esc_html( forkposter_setting( 'new_label' ) . $suffix )
+			: esc_html( __( 'Fork', 'forkposter' ) . $suffix );
 	}
 
 	return $states;
@@ -71,7 +74,7 @@ function forkposter_add_meta_box() {
  */
 function forkposter_admin_post_link( WP_Post $post ): string {
 	$url = current_user_can( 'edit_post', $post->ID ) ? get_edit_post_link( $post->ID ) : get_permalink( $post );
-	$out = sprintf( '<a href="%s">%s</a>', esc_url( $url ), esc_html( $post->post_title ?: __( '(no title)', 'forkposter' ) ) );
+	$out = sprintf( '<a href="%s">%s</a>', esc_url( $url ), esc_html( forkposter_title_with_version( $post ) ) );
 
 	if ( 'publish' !== $post->post_status ) {
 		$status = get_post_status_object( $post->post_status );
@@ -82,6 +85,17 @@ function forkposter_admin_post_link( WP_Post $post ): string {
 }
 
 function forkposter_render_meta_box( WP_Post $post ) {
+	wp_nonce_field( 'forkposter_save_meta_box', 'forkposter_meta_box_nonce' );
+
+	if ( forkposter_versions_enabled() ) {
+		printf(
+			'<p><label for="forkposter_version"><strong>%s</strong></label> <input type="text" id="forkposter_version" name="forkposter_version" value="%s" size="8" maxlength="20" placeholder="1"> <span class="description">%s</span></p>',
+			esc_html__( 'Version', 'forkposter' ),
+			esc_attr( forkposter_get_version( $post->ID ) ),
+			esc_html( forkposter_version_label( $post->ID ) ? sprintf( /* translators: %s: formatted version */ __( 'Shown as “%s”', 'forkposter' ), forkposter_version_label( $post->ID ) ) : '' )
+		);
+	}
+
 	$parent_id = forkposter_get_parent_id( $post->ID );
 	$parent    = $parent_id ? get_post( $parent_id ) : null;
 	$successor = forkposter_get_successor( $post->ID );
@@ -116,7 +130,6 @@ function forkposter_render_meta_box( WP_Post $post ) {
 			);
 		}
 
-		wp_nonce_field( 'forkposter_save_note', 'forkposter_note_nonce' );
 		printf(
 			'<p><label for="forkposter_note"><strong>%s</strong></label><textarea id="forkposter_note" name="forkposter_note" class="widefat" rows="3">%s</textarea><span class="description">%s</span></p>',
 			esc_html__( 'Why you revisited it', 'forkposter' ),
@@ -146,19 +159,26 @@ function forkposter_render_meta_box( WP_Post $post ) {
 	}
 }
 
-add_action( 'save_post', 'forkposter_save_note', 10, 2 );
-function forkposter_save_note( int $post_id, WP_Post $post ) {
-	if ( ! isset( $_POST['forkposter_note_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['forkposter_note_nonce'] ), 'forkposter_save_note' ) ) {
+add_action( 'save_post', 'forkposter_save_meta_box', 10, 2 );
+function forkposter_save_meta_box( int $post_id, WP_Post $post ) {
+	if ( ! isset( $_POST['forkposter_meta_box_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['forkposter_meta_box_nonce'] ), 'forkposter_save_meta_box' ) ) {
 		return;
 	}
 	if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
 		return;
 	}
-	if ( ! forkposter_get_parent_id( $post_id ) ) {
+
+	// The field is only shown while version numbers are on.
+	if ( isset( $_POST['forkposter_version'] ) ) {
+		forkposter_set_version( $post_id, wp_unslash( $_POST['forkposter_version'] ) );
+	}
+
+	// The note field is only shown on forks whose original still exists.
+	if ( ! isset( $_POST['forkposter_note'] ) || ! forkposter_get_parent_id( $post_id ) ) {
 		return;
 	}
 
-	$note = isset( $_POST['forkposter_note'] ) ? sanitize_textarea_field( wp_unslash( $_POST['forkposter_note'] ) ) : '';
+	$note = sanitize_textarea_field( wp_unslash( $_POST['forkposter_note'] ) );
 	if ( '' === $note ) {
 		delete_post_meta( $post_id, FORKPOSTER_META_NOTE );
 	} else {

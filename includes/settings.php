@@ -17,6 +17,8 @@ function forkposter_default_settings(): array {
 		'show_list_notes'   => 1,
 		'feed_labels'       => 1,
 		'seo_hints'         => 1,
+		'show_versions'     => 0,
+		'version_format'    => 'v.{version}',
 		'extra_tag'         => '',
 	);
 }
@@ -25,7 +27,7 @@ function forkposter_default_settings(): array {
  * Keys that are on/off toggles rather than text.
  */
 function forkposter_checkbox_settings(): array {
-	return array( 'show_title_badges', 'show_list_notes', 'feed_labels', 'seo_hints' );
+	return array( 'show_title_badges', 'show_list_notes', 'feed_labels', 'seo_hints', 'show_versions' );
 }
 
 /**
@@ -81,6 +83,7 @@ function forkposter_register_settings() {
 	);
 
 	add_settings_section( 'forkposter_wording', __( 'Labels and notices', 'forkposter' ), '__return_null', 'forkposter' );
+	add_settings_section( 'forkposter_versions', __( 'Version numbers', 'forkposter' ), '__return_null', 'forkposter' );
 	add_settings_section( 'forkposter_display', __( 'Display', 'forkposter' ), '__return_null', 'forkposter' );
 	add_settings_section( 'forkposter_sharing', __( 'Social sharing', 'forkposter' ), '__return_null', 'forkposter' );
 
@@ -89,6 +92,8 @@ function forkposter_register_settings() {
 		'new_label'         => array( 'forkposter_wording', 'text', __( 'Label for newer posts', 'forkposter' ), __( 'Shown as a badge on posts that revise an earlier one.', 'forkposter' ) ),
 		'superseded_notice' => array( 'forkposter_wording', 'textarea', __( 'Notice on older posts', 'forkposter' ), __( '{link} is the newest version’s title, linked. {date} is its publish date.', 'forkposter' ) ),
 		'fork_notice'       => array( 'forkposter_wording', 'textarea', __( 'Notice on newer posts', 'forkposter' ), __( '{link} is the earlier post’s title, linked. {date} is its publish date.', 'forkposter' ) ),
+		'show_versions'     => array( 'forkposter_versions', 'checkbox', __( 'Version numbers', 'forkposter' ), __( 'Number each version and show the number in badges, notices, the feed and version lists. New forks are numbered automatically; you can change any number in the editor’s Versions box.', 'forkposter' ) ),
+		'version_format'    => array( 'forkposter_versions', 'text', __( 'Version format', 'forkposter' ), __( 'How numbers are shown. {version} is the number you assign, so “v.{version}” shows “v.2.0”.', 'forkposter' ) ),
 		'show_title_badges' => array( 'forkposter_display', 'checkbox', __( 'Title badges', 'forkposter' ), __( 'Add the label next to post titles on the site.', 'forkposter' ) ),
 		'show_list_notes'   => array( 'forkposter_display', 'checkbox', __( 'Notes in post lists', 'forkposter' ), __( 'Show a short version note above the excerpt on the home page and archives.', 'forkposter' ) ),
 		'feed_labels'       => array( 'forkposter_display', 'checkbox', __( 'Label RSS items', 'forkposter' ), __( 'Prefix older posts’ feed titles with the label and add the link to the newer version.', 'forkposter' ) ),

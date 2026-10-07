@@ -278,7 +278,7 @@ function forkposter_render_families() {
 function forkposter_render_version_row( WP_Post $post, int $depth ) {
 	list( $status_label, $status_key ) = forkposter_version_status( $post );
 
-	$title = esc_html( $post->post_title ?: __( '(no title)', 'forkposter' ) );
+	$title = esc_html( forkposter_title_with_version( $post ) );
 	if ( current_user_can( 'edit_post', $post->ID ) ) {
 		$title = sprintf( '<a class="row-title" href="%s">%s</a>', esc_url( get_edit_post_link( $post->ID ) ), $title );
 	}
@@ -343,7 +343,7 @@ function forkposter_render_compare( int $from_id, int $to_id ) {
 					$item['post']->ID,
 					selected( $item['post']->ID, $selected, false ),
 					str_repeat( '— ', $item['depth'] ),
-					esc_html( $item['post']->post_title ?: __( '(no title)', 'forkposter' ) ),
+					esc_html( forkposter_title_with_version( $item['post'] ) ),
 					esc_html( $status ),
 					esc_html( get_the_date( '', $item['post'] ) )
 				);
@@ -413,5 +413,5 @@ function forkposter_render_compare( int $from_id, int $to_id ) {
 function forkposter_compare_heading( WP_Post $post ): string {
 	list( $status ) = forkposter_version_status( $post );
 	// wp_text_diff() prints headings as given, so escape here.
-	return esc_html( sprintf( '%s — %s, %s', $post->post_title ?: __( '(no title)', 'forkposter' ), $status, get_the_date( '', $post ) ) );
+	return esc_html( sprintf( '%s — %s, %s', forkposter_title_with_version( $post ), $status, get_the_date( '', $post ) ) );
 }

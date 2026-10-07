@@ -121,6 +121,10 @@ function forkposter_create_fork( WP_Post $post ) {
 
 	update_post_meta( $fork_id, FORKPOSTER_META_PARENT, $post->ID );
 
+	if ( forkposter_versions_enabled() ) {
+		forkposter_number_fork( $post->ID, $fork_id );
+	}
+
 	/**
 	 * Fires after a fork draft is created.
 	 *
@@ -130,4 +134,39 @@ function forkposter_create_fork( WP_Post $post ) {
 	do_action( 'forkposter_forked', $fork_id, $post->ID );
 
 	return $fork_id;
+}
+
+/**
+ * Give a new fork the next version number after its parent. An unnumbered
+ * parent becomes "1". A number already used by another fork of the same parent
+ * (a branch) is skipped, so forking v.1 twice gives v.2 and v.3.
+ */
+function forkposter_number_fork( int $parent_id, int $fork_id ) {
+	$parent_version = forkposter_get_version( $parent_id );
+	if ( '' === $parent_version ) {
+		$parent_version = '1';
+		forkposter_set_version( $parent_id, $parent_version );
+	}
+
+	$siblings = get_posts(
+		array(
+			'post_type'      => forkposter_post_types(),
+			'post_status'    => 'any',
+			'meta_key'       => FORKPOSTER_META_PARENT,
+			'meta_value'     => $parent_id,
+			'post__not_in'   => array( $fork_id ),
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		)
+	);
+	$taken = array_map( 'forkposter_get_version', $siblings );
+
+	$version = forkposter_next_version( $parent_version );
+	for ( $i = 0; '' !== $version && in_array( $version, $taken, true ) && $i < 100; $i++ ) {
+		$version = forkposter_next_version( $version );
+	}
+
+	if ( '' !== $version ) {
+		forkposter_set_version( $fork_id, $version );
+	}
 }

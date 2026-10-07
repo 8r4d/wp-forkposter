@@ -31,6 +31,7 @@ All labels and notices are added when the page is rendered. Nothing is written i
 * **Fork a post:** use the "Fork" link under a published post in Posts > All Posts, the "Fork this post" button in the editor's Versions box, or "Fork this post" in the admin bar while viewing it.
 * **See all your versions:** Posts > Versions lists every forked post grouped with all its versions (published, earlier, drafts and branches), with word counts and links. Only you and other editors can see it.
 * **Compare versions:** from Posts > Versions or the editor's Versions box, compare any two versions of a piece. Changes are highlighted word by word in readable text, with an option to compare the raw HTML instead.
+* **Version numbers (optional):** turn on Settings > Forkposter > Version numbers. New forks are numbered automatically (1 → 2, 2.0 → 3.0; forking the same post twice gives 2 and 3), and the number shows in badges ("Earlier version · v.1"), notice links, the feed, the history list and Posts > Versions. Change any post's number in the editor's Versions box, and the display format (default `v.{version}`) in settings.
 * **Version history:** add `[forkposter_history]` to a post to list every version of it.
 * **Settings:** Settings > Forkposter for labels, notice wording, display toggles, and the optional tag.
 
