@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "forkposter/history",
+	"title": "Version history",
+	"category": "widgets",
+	"icon": "backup",
+	"description": "Lists every published version of this piece, oldest first, with the current one highlighted.",
+	"keywords": [ "versions", "fork", "revisions", "history" ],
+	"textdomain": "forkposter",
+	"usesContext": [ "postId", "postType" ],
+	"supports": {
+		"html": false,
+		"color": {
+			"text": true,
+			"background": true,
+			"link": true
+		},
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "file:./index.js",
+	"style": "forkposter",
+	"render": "file:./render.php"
+}

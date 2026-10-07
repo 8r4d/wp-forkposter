@@ -65,7 +65,10 @@ function forkposter_add_meta_box() {
 		__( 'Versions', 'forkposter' ),
 		'forkposter_render_meta_box',
 		forkposter_post_types(),
-		'side'
+		'side',
+		'default',
+		// The block editor uses the Versions panel in editor.php instead.
+		array( '__back_compat_meta_box' => true )
 	);
 }
 

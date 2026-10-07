@@ -3,7 +3,7 @@
  * Plugin Name:       Forkposter
  * Description:       Fork a published post into a new version while keeping the original live, clearly labeled as an earlier version.
  * Version:           1.2.0
- * Requires at least: 6.2
+ * Requires at least: 6.4
  * Requires PHP:      7.4
  * Author:            Brad Salomons
  * License:           GPL-2.0-or-later
@@ -23,6 +23,8 @@ require_once FORKPOSTER_DIR . 'includes/model.php';
 require_once FORKPOSTER_DIR . 'includes/lifecycle.php';
 require_once FORKPOSTER_DIR . 'includes/fork-action.php';
 require_once FORKPOSTER_DIR . 'includes/admin.php';
+require_once FORKPOSTER_DIR . 'includes/editor.php';
+require_once FORKPOSTER_DIR . 'includes/blocks.php';
 require_once FORKPOSTER_DIR . 'includes/dashboard.php';
 require_once FORKPOSTER_DIR . 'includes/display.php';
 require_once FORKPOSTER_DIR . 'includes/feed.php';

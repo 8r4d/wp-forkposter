@@ -7,7 +7,15 @@ defined( 'ABSPATH' ) || exit;
 
 function forkposter_can_fork( $post ): bool {
 	$post = get_post( $post );
-	if ( ! forkposter_supports( $post ) || 'publish' !== $post->post_status ) {
+	return forkposter_user_can_fork( $post ) && 'publish' === $post->post_status;
+}
+
+/**
+ * Whether the current user may fork this post once it's published.
+ */
+function forkposter_user_can_fork( $post ): bool {
+	$post = get_post( $post );
+	if ( ! forkposter_supports( $post ) ) {
 		return false;
 	}
 

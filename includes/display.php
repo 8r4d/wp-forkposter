@@ -7,9 +7,15 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// Registered on init so the Version history block can also load it in the editor (see block.json).
+add_action( 'init', 'forkposter_register_styles' );
+function forkposter_register_styles() {
+	wp_register_style( 'forkposter', FORKPOSTER_URL . 'assets/forkposter.css', array(), FORKPOSTER_VERSION );
+}
+
 add_action( 'wp_enqueue_scripts', 'forkposter_enqueue_styles' );
 function forkposter_enqueue_styles() {
-	wp_enqueue_style( 'forkposter', FORKPOSTER_URL . 'assets/forkposter.css', array(), FORKPOSTER_VERSION );
+	wp_enqueue_style( 'forkposter' );
 }
 
 /**
@@ -220,13 +226,23 @@ function forkposter_post_class( array $classes, $class, $post_id ): array {
 /**
  * [forkposter_history] lists every version of the current post, oldest first.
  * Use [forkposter_history id="123"] to show another post's history.
+ * The Version history block (blocks.php) renders the same list.
  */
 add_shortcode( 'forkposter_history', 'forkposter_history_shortcode' );
 function forkposter_history_shortcode( $atts ): string {
 	$atts    = shortcode_atts( array( 'id' => 0 ), $atts, 'forkposter_history' );
 	$post_id = $atts['id'] ? absint( $atts['id'] ) : get_the_ID();
 
-	if ( ! $post_id || ! forkposter_supports( $post_id ) ) {
+	return $post_id ? forkposter_history_html( $post_id ) : '';
+}
+
+/**
+ * The version list for a post, or '' if it has no other published versions.
+ *
+ * @param string $wrapper_attributes Attributes for the <nav>, already escaped.
+ */
+function forkposter_history_html( int $post_id, string $wrapper_attributes = 'class="forkposter-history"' ): string {
+	if ( ! forkposter_supports( $post_id ) ) {
 		return '';
 	}
 
@@ -249,7 +265,8 @@ function forkposter_history_shortcode( $atts ): string {
 	}
 
 	return sprintf(
-		'<nav class="forkposter-history" aria-label="%1$s"><p class="forkposter-history__heading">%1$s</p><ol>%2$s</ol></nav>',
+		'<nav %1$s aria-label="%2$s"><p class="forkposter-history__heading">%2$s</p><ol>%3$s</ol></nav>',
+		$wrapper_attributes,
 		esc_attr__( 'Versions of this piece', 'forkposter' ),
 		$items
 	);

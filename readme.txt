@@ -1,10 +1,10 @@
 === Forkposter ===
 Contributors: bradsalomons
 Tags: versions, revisions, rewrite, archive, duplicate post
-Requires at least: 6.2
-Tested up to: 6.8
+Requires at least: 6.4
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 1.2.0
 License: GPL-2.0-or-later
 
 Fork a published post into a new version. The original stays live, labeled as an earlier version and linked to the new one.
@@ -28,11 +28,12 @@ All labels and notices are added when the page is rendered. Nothing is written i
 
 == Usage ==
 
-* **Fork a post:** use the "Fork" link under a published post in Posts > All Posts, the "Fork this post" button in the editor's Versions box, or "Fork this post" in the admin bar while viewing it.
+* **Fork a post:** use the "Fork" link under a published post in Posts > All Posts, the "Fork this post" button in the editor's Versions panel, or "Fork this post" in the admin bar while viewing it.
+* **Versions panel:** in the block editor's post sidebar. Shows where this post sits in its family, links to compare, and edits the version number and the "why I revisited it" note. Both are saved with the post and kept in its revision history. The classic editor gets the same controls in a Versions box.
 * **See all your versions:** Posts > Versions lists every forked post grouped with all its versions (published, earlier, drafts and branches), with word counts and links. Only you and other editors can see it.
 * **Compare versions:** from Posts > Versions or the editor's Versions box, compare any two versions of a piece. Changes are highlighted word by word in readable text, with an option to compare the raw HTML instead.
 * **Version numbers (optional):** turn on Settings > Forkposter > Version numbers. New forks are numbered automatically (1 → 2, 2.0 → 3.0; forking the same post twice gives 2 and 3), and the number shows in badges ("Earlier version · v.1"), notice links, the feed, the history list and Posts > Versions. Change any post's number in the editor's Versions box, and the display format (default `v.{version}`) in settings.
-* **Version history:** add `[forkposter_history]` to a post to list every version of it.
+* **Version history:** add the Version history block (or the `[forkposter_history]` shortcode) to a post to list every published version of it. In a block theme, put the block in the Single Posts template to show it on every post that has versions; it renders nothing on posts without other versions.
 * **Settings:** Settings > Forkposter for labels, notice wording, display toggles, and the optional tag.
 
 Notices accept `{link}` (the other version's title, linked) and `{date}` (its publish date).
