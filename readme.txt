@@ -19,6 +19,7 @@ When the fork is published:
 * The new post gets a notice linking back to the original, plus an optional "why I revisited this" note.
 * Both stay in the home page, archives, and RSS feed at their own dates. Older posts are labeled in post lists and in the feed.
 * The original's modified date is never changed, so it doesn't look recently updated.
+* Search engines are told how the versions relate: each version links to the previous, next and newest version in its page head (`rel="predecessor-version"` and friends), and newer posts' structured data says they are based on the earlier one. With Yoast SEO, Rank Math or All in One SEO active, this is added to their existing data instead of printed separately. Each version keeps its own canonical URL.
 * Older posts get a hidden `forkposter_state` term, and optionally a tag of your choice, so auto-share plugins can exclude them.
 
 Unpublishing, trashing or deleting the fork restores the original to a normal post. Chains (v1 → v2 → v3) are supported: every older version points to the newest one.
@@ -45,6 +46,7 @@ Filters:
 
 * `forkposter_post_types` — post types that can be forked (default `array( 'post' )`).
 * `forkposter_copy_meta_keys` — extra meta keys to copy onto a fork.
+* `forkposter_schema_handled_elsewhere` — return true if another plugin prints Article structured data, so Forkposter adds none of its own.
 
 Actions:
 

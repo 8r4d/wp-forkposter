@@ -16,6 +16,7 @@ function forkposter_default_settings(): array {
 		'show_title_badges' => 1,
 		'show_list_notes'   => 1,
 		'feed_labels'       => 1,
+		'seo_hints'         => 1,
 		'extra_tag'         => '',
 	);
 }
@@ -24,7 +25,7 @@ function forkposter_default_settings(): array {
  * Keys that are on/off toggles rather than text.
  */
 function forkposter_checkbox_settings(): array {
-	return array( 'show_title_badges', 'show_list_notes', 'feed_labels' );
+	return array( 'show_title_badges', 'show_list_notes', 'feed_labels', 'seo_hints' );
 }
 
 /**
@@ -91,6 +92,7 @@ function forkposter_register_settings() {
 		'show_title_badges' => array( 'forkposter_display', 'checkbox', __( 'Title badges', 'forkposter' ), __( 'Add the label next to post titles on the site.', 'forkposter' ) ),
 		'show_list_notes'   => array( 'forkposter_display', 'checkbox', __( 'Notes in post lists', 'forkposter' ), __( 'Show a short version note above the excerpt on the home page and archives.', 'forkposter' ) ),
 		'feed_labels'       => array( 'forkposter_display', 'checkbox', __( 'Label RSS items', 'forkposter' ), __( 'Prefix older posts’ feed titles with the label and add the link to the newer version.', 'forkposter' ) ),
+		'seo_hints'         => array( 'forkposter_display', 'checkbox', __( 'Search engine hints', 'forkposter' ), __( 'Tell search engines how versions relate: version links in the page head, and “based on” structured data on newer posts (added to Yoast, Rank Math or All in One SEO data when one is active).', 'forkposter' ) ),
 		'extra_tag'         => array( 'forkposter_sharing', 'text', __( 'Also tag older posts with', 'forkposter' ), __( 'Optional. Many auto-share plugins can only exclude by tag or category. Enter a tag (for example “superseded”) and exclude it in those plugins. It is removed again if the post stops being an earlier version.', 'forkposter' ) ),
 	);
 
