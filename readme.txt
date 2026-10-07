@@ -20,6 +20,8 @@ When the fork is published:
 * Both stay in the home page, archives, and RSS feed at their own dates. Older posts are labeled in post lists and in the feed.
 * The original's modified date is never changed, so it doesn't look recently updated.
 * Search engines are told how the versions relate: each version links to the previous, next and newest version in its page head (`rel="predecessor-version"` and friends), and newer posts' structured data says they are based on the earlier one. With Yoast SEO, Rank Math or All in One SEO active, this is added to their existing data instead of printed separately. Each version keeps its own canonical URL.
+* Page caches are cleared for the original and every earlier version when a fork is published or removed, and for the whole site when settings change. WP Rocket, W3 Total Cache, WP Super Cache, LiteSpeed Cache and SiteGround Optimizer are handled directly; other caches can hook `forkposter_purge_post` and `forkposter_purge_all`.
+* Yoast Duplicate Post doesn't copy Forkposter's links, version numbers or labels onto copies, so duplicating a post never creates a phantom version.
 * Older posts get a hidden `forkposter_state` term, and optionally a tag of your choice, so auto-share plugins can exclude them.
 
 Unpublishing, trashing or deleting the fork restores the original to a normal post. Chains (v1 → v2 → v3) are supported: every older version points to the newest one.
@@ -55,6 +57,8 @@ Actions:
 * `forkposter_forked( $fork_id, $parent_id )` — a fork draft was created.
 * `forkposter_superseded( $parent_id, $fork_id )` — a post became an earlier version.
 * `forkposter_restored( $parent_id, $fork_id )` — a post stopped being an earlier version.
+* `forkposter_purge_post( $post_id )` — a post's cached page should be cleared.
+* `forkposter_purge_all()` — every cached page should be cleared (settings changed).
 
 To exclude earlier versions from a query:
 
@@ -65,6 +69,17 @@ To exclude earlier versions from a query:
         'operator' => 'NOT IN',
     ) )
 
+== Development ==
+
+Tests run against a throwaway WordPress site in WordPress Playground (needs Node.js 20+):
+
+    npm install
+    npx playwright install chromium   # only for the browser test
+    npm test                          # integration tests
+    npm run test:editor               # plus the block editor browser test
+
+The test files, `package.json` and `node_modules` are listed in `.distignore`, so they stay out of the plugin zip.
+
 == Uninstalling ==
 
-Deleting the plugin removes the links between versions, the notes, the plugin's tags and its settings. Your posts are not deleted.
+Deleting the plugin removes the links between versions, the notes, version numbers, the plugin's tags and its settings, on every site of a multisite network. Your posts are not deleted.

@@ -1,0 +1,12 @@
+{
+	"name": "forkposter",
+	"private": true,
+	"description": "Development tooling for the Forkposter WordPress plugin.",
+	"scripts": {
+		"test": "tests/run.sh",
+		"test:editor": "tests/run.sh --editor"
+	},
+	"devDependencies": {
+		"playwright": "^1.50.0"
+	}
+}

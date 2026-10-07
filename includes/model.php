@@ -67,11 +67,17 @@ function forkposter_get_published_parent( int $post_id ): ?WP_Post {
 
 /**
  * The published fork that directly replaced this post.
+ *
+ * The link only counts if the successor really is a fork of this post, so a
+ * stray copy of the meta (for example from a duplicate-post plugin) is ignored.
  */
 function forkposter_get_successor( int $post_id ): ?WP_Post {
 	$successor_id = (int) get_post_meta( $post_id, FORKPOSTER_META_SUPERSEDED_BY, true );
 	$successor    = $successor_id ? get_post( $successor_id ) : null;
-	return ( $successor && 'publish' === $successor->post_status ) ? $successor : null;
+
+	return ( $successor && 'publish' === $successor->post_status && forkposter_get_parent_id( $successor->ID ) === $post_id )
+		? $successor
+		: null;
 }
 
 /**
