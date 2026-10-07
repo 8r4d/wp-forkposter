@@ -16,12 +16,14 @@
 	var useDispatch = wp.data.useDispatch;
 	var TextControl = wp.components.TextControl;
 	var TextareaControl = wp.components.TextareaControl;
+	var RadioControl = wp.components.RadioControl;
 	var Button = wp.components.Button;
 	var PluginDocumentSettingPanel =
 		( wp.editor && wp.editor.PluginDocumentSettingPanel ) || wp.editPost.PluginDocumentSettingPanel;
 
 	var META_VERSION = '_forkposter_version';
 	var META_NOTE = '_forkposter_note';
+	var META_KIND = '_forkposter_kind';
 
 	function formatVersion( version ) {
 		if ( ! version ) {
@@ -104,25 +106,43 @@
 			}
 		}
 
+		if ( data.branches.length ) {
+			parts.push(
+				el(
+					'p',
+					{ key: 'branches' },
+					__( 'Branched into', 'forkposter' ) + ' ',
+					data.branches.map( function ( branch, index ) {
+						var separator = '';
+						if ( index ) {
+							separator = index === data.branches.length - 1 ? ' ' + __( 'and', 'forkposter' ) + ' ' : ', ';
+						}
+						return el( Fragment, { key: branch.id }, separator, el( PostLink, { post: branch } ) );
+					} ),
+					'.'
+				)
+			);
+		}
+
 		if ( data.parent ) {
+			var kind = state.meta[ META_KIND ] === 'branch' ? 'branch' : 'update';
 			parts.push(
 				el( 'p', { key: 'parent' }, __( 'Forked from', 'forkposter' ) + ' ', el( PostLink, { post: data.parent } ), '.' ),
-				el( 'p', { key: 'compare' }, el( 'a', { href: data.compareUrl }, __( 'Compare with previous version', 'forkposter' ) ) )
+				el( 'p', { key: 'compare' }, el( 'a', { href: data.compareUrl }, __( 'Compare with previous version', 'forkposter' ) ) ),
+				el( RadioControl, {
+					key: 'kind',
+					label: __( 'This fork is', 'forkposter' ),
+					selected: kind,
+					options: [
+						{ label: __( 'An update', 'forkposter' ), value: 'update' },
+						{ label: __( 'A branch', 'forkposter' ), value: 'branch' },
+					],
+					onChange: function ( value ) {
+						setMeta( META_KIND, value );
+					},
+					help: data.kindDescriptions[ kind ],
+				} )
 			);
-
-			if ( ! isPublished ) {
-				parts.push(
-					el(
-						Description,
-						{ key: 'publish-hint' },
-						sprintf(
-							/* translators: %s: the "earlier version" label */
-							__( 'When you publish this, the original stays live, gets labeled “%s”, and links here.', 'forkposter' ),
-							data.oldLabel
-						)
-					)
-				);
-			}
 
 			parts.push(
 				el( TextareaControl, {
@@ -146,24 +166,27 @@
 				el(
 					'div',
 					{ key: 'fork', className: 'forkposter-panel__fork' },
-					el( Button, { variant: 'secondary', href: data.forkUrl }, __( 'Fork this post', 'forkposter' ) ),
 					el(
-						Description,
-						null,
-						state.isDirty
-							? __( 'You have unsaved changes. The fork copies the last saved version, so save first.', 'forkposter' )
-							: __( 'Creates a new draft linked to this post. This post stays live and is labeled as an earlier version once the draft is published.', 'forkposter' )
+						'div',
+						{ className: 'forkposter-panel__buttons' },
+						el( Button, { variant: 'secondary', href: data.forkUrl }, __( 'Fork as update', 'forkposter' ) ),
+						el( Button, { variant: 'secondary', href: data.forkBranchUrl }, __( 'Fork as branch', 'forkposter' ) )
 					),
+					state.isDirty
+						? el( Description, null, __( 'You have unsaved changes. A fork copies the last saved version, so save first.', 'forkposter' ) )
+						: null,
+					el( Description, null, el( 'strong', null, __( 'Update:', 'forkposter' ) + ' ' ), data.kindDescriptions.update ),
+					el( Description, null, el( 'strong', null, __( 'Branch:', 'forkposter' ) + ' ' ), data.kindDescriptions.branch ),
 					data.successor
-						? el( Description, null, __( 'This post already has a newer version. Forking it again starts a separate branch.', 'forkposter' ) )
+						? el( Description, null, __( 'This post already has an update. A new update would replace it as the newest version.', 'forkposter' ) )
 						: null
 				)
 			);
-		} else if ( ! data.parent && ! data.successor && ! isPublished ) {
+		} else if ( ! data.parent && ! data.successor && ! data.branches.length && ! isPublished ) {
 			parts.push( el( Description, { key: 'unpublished' }, __( 'Publish this post to be able to fork it later.', 'forkposter' ) ) );
 		}
 
-		if ( data.parent || data.successor ) {
+		if ( data.parent || data.successor || data.branches.length ) {
 			parts.push( el( 'p', { key: 'all' }, el( 'a', { href: data.dashboardUrl }, __( 'All versions →', 'forkposter' ) ) ) );
 		}
 

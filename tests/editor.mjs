@@ -56,10 +56,12 @@ let panel = await openEditor( fork );
 check( 'classic meta box is not loaded in the block editor', ( await page.locator( '#forkposter.postbox' ).count() ) === 0 );
 const forkText = await panel.innerText();
 check( 'panel shows where the fork came from', forkText.includes( 'Forked from' ) && forkText.includes( 'Remote work (v.1)' ), forkText );
-check( 'panel explains what publishing will do', forkText.includes( 'When you publish this' ) );
+check( 'panel explains what publishing an update does', forkText.includes( 'Replaces the original' ) );
 
 await page.getByLabel( 'Version', { exact: true } ).fill( '2.5' );
 await page.getByLabel( 'Why you revisited it' ).fill( 'Replies changed my mind.' );
+await page.getByLabel( 'A branch' ).check();
+check( 'choosing "A branch" explains what that does', ( await panel.innerText() ).includes( 'lists this among its branches' ) );
 check( 'version preview updates while typing', ( await panel.innerText() ).includes( 'Shown as “v.2.5”' ) );
 await page.getByRole( 'button', { name: 'Save draft' } ).click();
 await page.waitForFunction(
@@ -70,11 +72,13 @@ await page.waitForFunction(
 const saved = await json( `/forkposter-editor-fixture.php?inspect=${ fork }` );
 check( 'version saved', saved.version === '2.5', JSON.stringify( saved ) );
 check( 'note saved', saved.note === 'Replies changed my mind.', JSON.stringify( saved ) );
+check( 'kind saved', saved.kind === 'branch', JSON.stringify( saved ) );
 check( 'version and note copied into the revision', saved.revisionVersion === '2.5' && saved.revisionNote === 'Replies changed my mind.', JSON.stringify( saved ) );
 
 // The original: the history block shows its placeholder until another version is published.
 panel = await openEditor( original );
-check( 'original offers Fork this post', ( await panel.innerText() ).includes( 'Fork this post' ) );
+const originalText = await panel.innerText();
+check( 'original offers both kinds of fork', originalText.includes( 'Fork as update' ) && originalText.includes( 'Fork as branch' ), originalText );
 await historyBlock().waitFor();
 check( 'history block shows a placeholder with no other published version', ( await historyBlock().innerText() ).includes( 'It appears once this post has' ) );
 
@@ -86,10 +90,11 @@ await page.evaluate( async () => {
 } );
 check( 'fork published', ( await json( `/forkposter-editor-fixture.php?inspect=${ fork }` ) ).status === 'publish' );
 
-await openEditor( original );
-await historyBlock().getByText( 'Versions of this piece' ).waitFor( { timeout: 15000 } );
+panel = await openEditor( original );
+check( "original's panel lists the branch", ( await panel.innerText() ).includes( 'Branched into Remote work, revisited (v.2.5)' ), await panel.innerText() );
+await historyBlock().getByText( 'Branched into' ).waitFor( { timeout: 15000 } );
 const blockText = await historyBlock().innerText();
-check( 'history block lists both versions in the editor', blockText.includes( 'Remote work (v.1)' ) && blockText.includes( 'Remote work, revisited (v.2.5)' ), blockText );
+check( 'history block lists the branch in the editor', blockText.includes( 'Remote work (v.1)' ) && blockText.includes( 'Remote work, revisited (v.2.5)' ), blockText );
 
 const front = await ( await page.goto( originalUrl ) ).text();
 check( 'history block renders on the site', /<nav[^>]*wp-block-forkposter-history[\s\S]*Remote work, revisited \(v\.2\.5\)/.test( front ) );

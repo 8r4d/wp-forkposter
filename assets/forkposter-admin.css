@@ -54,9 +54,20 @@
 	color: #00450c;
 }
 
-.forkposter-status--superseded {
+.forkposter-status--superseded,
+.forkposter-status--branched {
 	background: #fcf9e8;
 	color: #614200;
+}
+
+.forkposter-kind {
+	margin-inline-start: 4px;
+	padding: 0 6px;
+	border: 1px solid #c3c4c7;
+	border-radius: 999px;
+	font-size: 11px;
+	color: #50575e;
+	vertical-align: middle;
 }
 
 .forkposter-empty {

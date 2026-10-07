@@ -2,10 +2,15 @@
 /**
  * How forks are stored and looked up.
  *
- * A fork stores its source in FORKPOSTER_META_PARENT. When the fork is published,
- * the source gets FORKPOSTER_META_SUPERSEDED_BY pointing at it plus the
- * "superseded" term in FORKPOSTER_TAXONOMY. Everything shown on the site is
- * derived from those at render time, so nothing is ever written into post content.
+ * A fork stores its source in FORKPOSTER_META_PARENT and its kind in
+ * FORKPOSTER_META_KIND: an update (replaces the original) or a branch (takes the
+ * piece in a new direction alongside it). Forks without a kind are updates.
+ *
+ * While forks are published, the source gets FORKPOSTER_META_SUPERSEDED_BY
+ * pointing at its newest update, one FORKPOSTER_META_BRANCHED_INTO row per
+ * published branch, and the "superseded" term in FORKPOSTER_TAXONOMY
+ * (lifecycle.php keeps these in sync). Everything shown on the site is derived
+ * from those at render time, so nothing is ever written into post content.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -15,6 +20,10 @@ const FORKPOSTER_META_SUPERSEDED_BY = '_forkposter_superseded_by';
 const FORKPOSTER_META_NOTE          = '_forkposter_note';
 const FORKPOSTER_META_ADDED_TAG     = '_forkposter_added_tag';
 const FORKPOSTER_META_VERSION       = '_forkposter_version';
+const FORKPOSTER_META_KIND          = '_forkposter_kind';
+const FORKPOSTER_META_BRANCHED_INTO = '_forkposter_branched_into';
+const FORKPOSTER_KIND_UPDATE        = 'update';
+const FORKPOSTER_KIND_BRANCH        = 'branch';
 const FORKPOSTER_TAXONOMY           = 'forkposter_state';
 const FORKPOSTER_TERM_SUPERSEDED    = 'superseded';
 
@@ -66,18 +75,65 @@ function forkposter_get_published_parent( int $post_id ): ?WP_Post {
 }
 
 /**
- * The published fork that directly replaced this post.
- *
- * The link only counts if the successor really is a fork of this post, so a
- * stray copy of the meta (for example from a duplicate-post plugin) is ignored.
+ * A fork's kind: FORKPOSTER_KIND_UPDATE or FORKPOSTER_KIND_BRANCH.
+ */
+function forkposter_get_kind( int $post_id ): string {
+	return FORKPOSTER_KIND_BRANCH === get_post_meta( $post_id, FORKPOSTER_META_KIND, true ) ? FORKPOSTER_KIND_BRANCH : FORKPOSTER_KIND_UPDATE;
+}
+
+function forkposter_sanitize_kind( $kind ): string {
+	return FORKPOSTER_KIND_BRANCH === $kind ? FORKPOSTER_KIND_BRANCH : FORKPOSTER_KIND_UPDATE;
+}
+
+/**
+ * Whether a post is a fork that branches off its original rather than updating it.
+ */
+function forkposter_is_branch( int $post_id ): bool {
+	return forkposter_get_parent_id( $post_id ) && FORKPOSTER_KIND_BRANCH === forkposter_get_kind( $post_id );
+}
+
+/**
+ * Whether $fork is a published fork of $post_id of the given kind. Links stored
+ * on the original only count when this holds, so a stray copy of the meta (for
+ * example from a duplicate-post plugin) is ignored.
+ */
+function forkposter_is_published_fork_of( ?WP_Post $fork, int $post_id, string $kind ): bool {
+	return $fork
+		&& 'publish' === $fork->post_status
+		&& forkposter_get_parent_id( $fork->ID ) === $post_id
+		&& forkposter_get_kind( $fork->ID ) === $kind;
+}
+
+/**
+ * The published update that replaced this post.
  */
 function forkposter_get_successor( int $post_id ): ?WP_Post {
 	$successor_id = (int) get_post_meta( $post_id, FORKPOSTER_META_SUPERSEDED_BY, true );
 	$successor    = $successor_id ? get_post( $successor_id ) : null;
 
-	return ( $successor && 'publish' === $successor->post_status && forkposter_get_parent_id( $successor->ID ) === $post_id )
-		? $successor
-		: null;
+	return forkposter_is_published_fork_of( $successor, $post_id, FORKPOSTER_KIND_UPDATE ) ? $successor : null;
+}
+
+/**
+ * This post's published branches, oldest first.
+ *
+ * @return WP_Post[]
+ */
+function forkposter_get_branches( int $post_id ): array {
+	$branches = array();
+	foreach ( array_unique( array_map( 'intval', get_post_meta( $post_id, FORKPOSTER_META_BRANCHED_INTO ) ) ) as $branch_id ) {
+		$branch = get_post( $branch_id );
+		if ( forkposter_is_published_fork_of( $branch, $post_id, FORKPOSTER_KIND_BRANCH ) ) {
+			$branches[] = $branch;
+		}
+	}
+
+	usort( $branches, fn( $a, $b ) => strcmp( $a->post_date_gmt, $b->post_date_gmt ) ?: $a->ID <=> $b->ID );
+	return $branches;
+}
+
+function forkposter_is_branched( int $post_id ): bool {
+	return (bool) forkposter_get_branches( $post_id );
 }
 
 /**
@@ -108,6 +164,14 @@ function forkposter_is_fork( int $post_id ): bool {
 }
 
 /**
+ * Whether a post has been replaced by an update or split into branches: either
+ * way, it's no longer the current word on its subject.
+ */
+function forkposter_has_moved_on( int $post_id ): bool {
+	return forkposter_is_superseded( $post_id ) || forkposter_is_branched( $post_id );
+}
+
+/**
  * Published forks of a post, newest first.
  *
  * @return WP_Post[]
@@ -120,8 +184,11 @@ function forkposter_find_published_forks( int $parent_id, int $exclude_id = 0, i
 			'meta_key'       => FORKPOSTER_META_PARENT,
 			'meta_value'     => $parent_id,
 			'post__not_in'   => $exclude_id ? array( $exclude_id ) : array(),
-			'orderby'        => 'date',
-			'order'          => 'DESC',
+			// Forks published in the same second still come out in a stable order.
+			'orderby'        => array(
+				'date' => 'DESC',
+				'ID'   => 'DESC',
+			),
 			'posts_per_page' => $limit,
 		)
 	);
@@ -129,7 +196,8 @@ function forkposter_find_published_forks( int $parent_id, int $exclude_id = 0, i
 
 /**
  * Every published version in this post's line, oldest first: its ancestors,
- * the post itself, then the chain of versions that replaced it.
+ * the post itself, then the chain of updates that replaced it. Branches of the
+ * post itself aren't included; see forkposter_get_branches().
  *
  * @return WP_Post[]
  */

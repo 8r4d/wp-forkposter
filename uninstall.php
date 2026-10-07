@@ -18,7 +18,7 @@ function forkposter_uninstall_site() {
 		wp_remove_object_terms( (int) $row->post_id, $row->meta_value, 'post_tag' );
 	}
 
-	foreach ( array( '_forkposter_parent', '_forkposter_superseded_by', '_forkposter_note', '_forkposter_added_tag', '_forkposter_version' ) as $key ) {
+	foreach ( array( '_forkposter_parent', '_forkposter_superseded_by', '_forkposter_branched_into', '_forkposter_kind', '_forkposter_note', '_forkposter_added_tag', '_forkposter_version' ) as $key ) {
 		delete_post_meta_by_key( $key );
 	}
 

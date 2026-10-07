@@ -23,12 +23,16 @@ function forkposter_user_can_fork( $post ): bool {
 	return $type && current_user_can( $type->cap->edit_posts ) && current_user_can( 'edit_post', $post->ID );
 }
 
-function forkposter_fork_url( int $post_id ): string {
+/**
+ * @param string $kind FORKPOSTER_KIND_UPDATE or FORKPOSTER_KIND_BRANCH.
+ */
+function forkposter_fork_url( int $post_id, string $kind = FORKPOSTER_KIND_UPDATE ): string {
 	return wp_nonce_url(
 		add_query_arg(
 			array(
 				'action' => 'forkposter_fork',
 				'post'   => $post_id,
+				'kind'   => forkposter_sanitize_kind( $kind ),
 			),
 			admin_url( 'admin-post.php' )
 		),
@@ -46,7 +50,8 @@ function forkposter_handle_fork_request() {
 		wp_die( esc_html__( 'You can’t fork this post. Only published posts you can edit can be forked.', 'forkposter' ), 403 );
 	}
 
-	$fork_id = forkposter_create_fork( $post );
+	$kind    = forkposter_sanitize_kind( isset( $_GET['kind'] ) ? sanitize_key( $_GET['kind'] ) : '' );
+	$fork_id = forkposter_create_fork( $post, $kind );
 	if ( is_wp_error( $fork_id ) ) {
 		wp_die( esc_html( $fork_id->get_error_message() ) );
 	}
@@ -59,9 +64,11 @@ function forkposter_handle_fork_request() {
  * Create a draft copy of $post linked back to it. The source isn't changed
  * until the draft is published (see lifecycle.php).
  *
+ * @param string $kind FORKPOSTER_KIND_UPDATE to replace the original once
+ *                     published, FORKPOSTER_KIND_BRANCH to sit alongside it.
  * @return int|WP_Error The new draft's ID.
  */
-function forkposter_create_fork( WP_Post $post ) {
+function forkposter_create_fork( WP_Post $post, string $kind = FORKPOSTER_KIND_UPDATE ) {
 	// wp_insert_post() unslashes its input, so slash it to keep backslashes in the content.
 	$fork_id = wp_insert_post(
 		wp_slash(
@@ -128,6 +135,7 @@ function forkposter_create_fork( WP_Post $post ) {
 	}
 
 	update_post_meta( $fork_id, FORKPOSTER_META_PARENT, $post->ID );
+	update_post_meta( $fork_id, FORKPOSTER_META_KIND, forkposter_sanitize_kind( $kind ) );
 
 	if ( forkposter_versions_enabled() ) {
 		forkposter_number_fork( $post->ID, $fork_id );

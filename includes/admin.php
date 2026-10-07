@@ -11,10 +11,17 @@ function forkposter_row_actions( array $actions, WP_Post $post ): array {
 	if ( forkposter_can_fork( $post ) ) {
 		$actions['forkposter_fork'] = sprintf(
 			'<a href="%s" aria-label="%s">%s</a>',
-			esc_url( forkposter_fork_url( $post->ID ) ),
+			esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ) ),
 			/* translators: %s: post title */
-			esc_attr( sprintf( __( 'Fork “%s” into a new version', 'forkposter' ), $post->post_title ) ),
+			esc_attr( sprintf( __( 'Fork “%s” into an updated version', 'forkposter' ), $post->post_title ) ),
 			esc_html__( 'Fork', 'forkposter' )
+		);
+		$actions['forkposter_branch'] = sprintf(
+			'<a href="%s" aria-label="%s">%s</a>',
+			esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ) ),
+			/* translators: %s: post title */
+			esc_attr( sprintf( __( 'Branch “%s” into a new direction', 'forkposter' ), $post->post_title ) ),
+			esc_html__( 'Branch', 'forkposter' )
 		);
 	}
 	return $actions;
@@ -27,15 +34,33 @@ function forkposter_admin_bar_link( WP_Admin_Bar $bar ) {
 	}
 
 	$post = get_queried_object();
-	if ( $post instanceof WP_Post && forkposter_can_fork( $post ) ) {
-		$bar->add_node(
-			array(
-				'id'    => 'forkposter-fork',
-				'title' => __( 'Fork this post', 'forkposter' ),
-				'href'  => forkposter_fork_url( $post->ID ),
-			)
-		);
+	if ( ! $post instanceof WP_Post || ! forkposter_can_fork( $post ) ) {
+		return;
 	}
+
+	$bar->add_node(
+		array(
+			'id'    => 'forkposter-fork',
+			'title' => __( 'Fork this post', 'forkposter' ),
+			'href'  => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ),
+		)
+	);
+	$bar->add_node(
+		array(
+			'parent' => 'forkposter-fork',
+			'id'     => 'forkposter-fork-update',
+			'title'  => __( 'As an update', 'forkposter' ),
+			'href'   => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ),
+		)
+	);
+	$bar->add_node(
+		array(
+			'parent' => 'forkposter-fork',
+			'id'     => 'forkposter-fork-branch',
+			'title'  => __( 'As a branch', 'forkposter' ),
+			'href'   => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ),
+		)
+	);
 }
 
 add_filter( 'display_post_states', 'forkposter_post_states', 10, 2 );
@@ -46,13 +71,15 @@ function forkposter_post_states( array $states, WP_Post $post ): array {
 
 	$version = forkposter_version_label( $post->ID );
 	$suffix  = '' === $version ? '' : ' · ' . $version;
+	$role    = forkposter_role( $post->ID );
 
-	if ( forkposter_is_superseded( $post->ID ) ) {
-		$states['forkposter_superseded'] = esc_html( forkposter_setting( 'old_label' ) . $suffix );
+	if ( $role ) {
+		$states[ 'forkposter_' . $role['key'] ] = esc_html( $role['label'] . $suffix );
 	} elseif ( forkposter_get_parent_id( $post->ID ) ) {
-		$states['forkposter_fork'] = 'publish' === $post->post_status
-			? esc_html( forkposter_setting( 'new_label' ) . $suffix )
-			: esc_html( __( 'Fork', 'forkposter' ) . $suffix );
+		// An unpublished fork.
+		$states['forkposter_draft'] = esc_html(
+			( forkposter_is_branch( $post->ID ) ? __( 'Branch', 'forkposter' ) : __( 'Fork', 'forkposter' ) ) . $suffix
+		);
 	}
 
 	return $states;
@@ -87,6 +114,20 @@ function forkposter_admin_post_link( WP_Post $post ): string {
 	return $out;
 }
 
+/**
+ * What publishing a fork of each kind does, for the editor and the meta box.
+ */
+function forkposter_kind_descriptions(): array {
+	return array(
+		FORKPOSTER_KIND_UPDATE => sprintf(
+			/* translators: %s: the "earlier version" label */
+			__( 'Replaces the original. Once this is published, the original stays live, gets labeled “%s”, and points here.', 'forkposter' ),
+			forkposter_setting( 'old_label' )
+		),
+		FORKPOSTER_KIND_BRANCH => __( 'Takes the piece in a new direction. Once this is published, the original stays live and lists this among its branches.', 'forkposter' ),
+	);
+}
+
 function forkposter_render_meta_box( WP_Post $post ) {
 	wp_nonce_field( 'forkposter_save_meta_box', 'forkposter_meta_box_nonce' );
 
@@ -103,6 +144,7 @@ function forkposter_render_meta_box( WP_Post $post ) {
 	$parent    = $parent_id ? get_post( $parent_id ) : null;
 	$successor = forkposter_get_successor( $post->ID );
 	$latest    = forkposter_get_latest( $post->ID );
+	$branches  = forkposter_get_branches( $post->ID );
 
 	if ( $successor ) {
 		printf(
@@ -117,21 +159,30 @@ function forkposter_render_meta_box( WP_Post $post ) {
 		}
 	}
 
+	if ( $branches ) {
+		/* translators: %s: list of linked post titles */
+		printf( '<p>' . esc_html__( 'Branched into %s.', 'forkposter' ) . '</p>', wp_sprintf_l( '%l', array_map( 'forkposter_admin_post_link', $branches ) ) );
+	}
+
 	if ( $parent ) {
 		/* translators: %s: linked post title */
 		printf( '<p>' . esc_html__( 'Forked from %s.', 'forkposter' ) . '</p>', forkposter_admin_post_link( $parent ) );
 		printf( '<p><a href="%s">%s</a></p>', esc_url( forkposter_compare_url( $parent->ID, $post->ID ) ), esc_html__( 'Compare with previous version', 'forkposter' ) );
 
-		if ( 'publish' !== $post->post_status ) {
+		$kind = forkposter_get_kind( $post->ID );
+		echo '<fieldset><legend><strong>' . esc_html__( 'This fork is', 'forkposter' ) . '</strong></legend>';
+		foreach ( array(
+			FORKPOSTER_KIND_UPDATE => __( 'An update', 'forkposter' ),
+			FORKPOSTER_KIND_BRANCH => __( 'A branch', 'forkposter' ),
+		) as $value => $label ) {
 			printf(
-				'<p class="description">%s</p>',
-				sprintf(
-					/* translators: %s: the "earlier version" label */
-					esc_html__( 'When you publish this, the original stays live, gets labeled “%s”, and links here.', 'forkposter' ),
-					esc_html( forkposter_setting( 'old_label' ) )
-				)
+				'<label style="display:block"><input type="radio" name="forkposter_kind" value="%s" %s> %s</label>',
+				esc_attr( $value ),
+				checked( $kind, $value, false ),
+				esc_html( $label )
 			);
 		}
+		printf( '<p class="description">%s</p></fieldset>', esc_html( forkposter_kind_descriptions()[ $kind ] ) );
 
 		printf(
 			'<p><label for="forkposter_note"><strong>%s</strong></label><textarea id="forkposter_note" name="forkposter_note" class="widefat" rows="3">%s</textarea><span class="description">%s</span></p>',
@@ -144,20 +195,26 @@ function forkposter_render_meta_box( WP_Post $post ) {
 	}
 
 	if ( forkposter_can_fork( $post ) ) {
+		$descriptions = forkposter_kind_descriptions();
 		printf(
-			'<p><a class="button" href="%s">%s</a></p><p class="description">%s</p>',
-			esc_url( forkposter_fork_url( $post->ID ) ),
-			esc_html__( 'Fork this post', 'forkposter' ),
-			esc_html__( 'Creates a new draft linked to this post. This post stays live and is labeled as an earlier version once the draft is published.', 'forkposter' )
+			'<p><a class="button" href="%s">%s</a> <a class="button" href="%s">%s</a></p><p class="description"><strong>%s</strong> %s</p><p class="description"><strong>%s</strong> %s</p>',
+			esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ) ),
+			esc_html__( 'Fork as update', 'forkposter' ),
+			esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ) ),
+			esc_html__( 'Fork as branch', 'forkposter' ),
+			esc_html__( 'Update:', 'forkposter' ),
+			esc_html( $descriptions[ FORKPOSTER_KIND_UPDATE ] ),
+			esc_html__( 'Branch:', 'forkposter' ),
+			esc_html( $descriptions[ FORKPOSTER_KIND_BRANCH ] )
 		);
 		if ( $successor ) {
-			echo '<p class="description">' . esc_html__( 'This post already has a newer version. Forking it again starts a separate branch.', 'forkposter' ) . '</p>';
+			echo '<p class="description">' . esc_html__( 'This post already has an update. A new update would replace it as the newest version.', 'forkposter' ) . '</p>';
 		}
-	} elseif ( ! $parent_id && ! $successor && 'publish' !== $post->post_status ) {
+	} elseif ( ! $parent_id && ! $successor && ! $branches && 'publish' !== $post->post_status ) {
 		echo '<p class="description">' . esc_html__( 'Publish this post to be able to fork it later.', 'forkposter' ) . '</p>';
 	}
 
-	if ( $parent || $successor ) {
+	if ( $parent || $successor || $branches ) {
 		printf( '<p><a href="%s">%s</a></p>', esc_url( forkposter_dashboard_url() ), esc_html__( 'All versions →', 'forkposter' ) );
 	}
 }
@@ -176,8 +233,16 @@ function forkposter_save_meta_box( int $post_id, WP_Post $post ) {
 		forkposter_set_version( $post_id, wp_unslash( $_POST['forkposter_version'] ) );
 	}
 
-	// The note field is only shown on forks whose original still exists.
-	if ( ! isset( $_POST['forkposter_note'] ) || ! forkposter_get_parent_id( $post_id ) ) {
+	// The kind and note fields are only shown on forks whose original still exists.
+	if ( ! forkposter_get_parent_id( $post_id ) ) {
+		return;
+	}
+
+	if ( isset( $_POST['forkposter_kind'] ) ) {
+		update_post_meta( $post_id, FORKPOSTER_META_KIND, forkposter_sanitize_kind( sanitize_key( $_POST['forkposter_kind'] ) ) );
+	}
+
+	if ( ! isset( $_POST['forkposter_note'] ) ) {
 		return;
 	}
 

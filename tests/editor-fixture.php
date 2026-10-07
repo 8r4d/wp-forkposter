@@ -27,6 +27,7 @@ if ( isset( $_GET['inspect'] ) ) {
 			'status'          => get_post_status( $id ),
 			'version'         => get_post_meta( $id, '_forkposter_version', true ),
 			'note'            => get_post_meta( $id, '_forkposter_note', true ),
+			'kind'            => get_post_meta( $id, '_forkposter_kind', true ),
 			'revisionVersion' => $revision ? get_metadata( 'post', $revision->ID, '_forkposter_version', true ) : null,
 			'revisionNote'    => $revision ? get_metadata( 'post', $revision->ID, '_forkposter_note', true ) : null,
 		)

@@ -95,7 +95,7 @@ add_filter( 'duplicate_post_blacklist_filter', 'forkposter_duplicate_post_exclud
 function forkposter_duplicate_post_exclude_meta( $keys ) {
 	return array_merge(
 		(array) $keys,
-		array( FORKPOSTER_META_PARENT, FORKPOSTER_META_SUPERSEDED_BY, FORKPOSTER_META_NOTE, FORKPOSTER_META_ADDED_TAG, FORKPOSTER_META_VERSION )
+		array( FORKPOSTER_META_PARENT, FORKPOSTER_META_SUPERSEDED_BY, FORKPOSTER_META_BRANCHED_INTO, FORKPOSTER_META_KIND, FORKPOSTER_META_NOTE, FORKPOSTER_META_ADDED_TAG, FORKPOSTER_META_VERSION )
 	);
 }
 

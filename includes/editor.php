@@ -35,6 +35,23 @@ function forkposter_register_meta() {
 				)
 			);
 		}
+
+		register_post_meta(
+			$post_type,
+			FORKPOSTER_META_KIND,
+			array(
+				'type'              => 'string',
+				'single'            => true,
+				'default'           => FORKPOSTER_KIND_UPDATE,
+				'show_in_rest'      => array(
+					'schema' => array( 'enum' => array( FORKPOSTER_KIND_UPDATE, FORKPOSTER_KIND_BRANCH ) ),
+				),
+				'sanitize_callback' => 'forkposter_sanitize_kind',
+				'auth_callback'     => static function ( $allowed, $meta_key, $post_id ) {
+					return current_user_can( 'edit_post', $post_id );
+				},
+			)
+		);
 	}
 }
 
@@ -59,7 +76,7 @@ function forkposter_enqueue_editor_panel() {
 	wp_enqueue_style( 'forkposter-editor' );
 	wp_add_inline_style(
 		'forkposter-editor',
-		'.forkposter-panel{display:flex;flex-direction:column;gap:12px}.forkposter-panel p{margin:0}.forkposter-panel__fork{display:flex;flex-direction:column;align-items:flex-start;gap:8px}'
+		'.forkposter-panel{display:flex;flex-direction:column;gap:12px}.forkposter-panel p{margin:0}.forkposter-panel__fork{display:flex;flex-direction:column;align-items:flex-start;gap:8px}.forkposter-panel__buttons{display:flex;flex-wrap:wrap;gap:8px}'
 	);
 }
 
@@ -94,16 +111,19 @@ function forkposter_editor_data( WP_Post $post ): array {
 	$latest    = forkposter_get_latest( $post->ID );
 
 	return array(
-		'versionsEnabled' => forkposter_versions_enabled(),
-		'versionFormat'   => (string) forkposter_setting( 'version_format' ),
-		'oldLabel'        => (string) forkposter_setting( 'old_label' ),
-		'parent'          => $parent ? forkposter_editor_post_ref( $parent ) : null,
-		'parentMissing'   => $parent_id && ! $parent,
-		'successor'       => $successor ? forkposter_editor_post_ref( $successor ) : null,
-		'latest'          => $latest ? forkposter_editor_post_ref( $latest ) : null,
-		'canFork'         => forkposter_user_can_fork( $post ),
-		'forkUrl'         => forkposter_fork_url( $post->ID ),
-		'compareUrl'      => $parent ? forkposter_compare_url( $parent->ID, $post->ID ) : '',
-		'dashboardUrl'    => forkposter_dashboard_url(),
+		'kindDescriptions' => forkposter_kind_descriptions(),
+		'branches'         => array_map( 'forkposter_editor_post_ref', forkposter_get_branches( $post->ID ) ),
+		'forkBranchUrl'    => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ),
+		'versionsEnabled'  => forkposter_versions_enabled(),
+		'versionFormat'    => (string) forkposter_setting( 'version_format' ),
+		'oldLabel'         => (string) forkposter_setting( 'old_label' ),
+		'parent'           => $parent ? forkposter_editor_post_ref( $parent ) : null,
+		'parentMissing'    => $parent_id && ! $parent,
+		'successor'        => $successor ? forkposter_editor_post_ref( $successor ) : null,
+		'latest'           => $latest ? forkposter_editor_post_ref( $latest ) : null,
+		'canFork'          => forkposter_user_can_fork( $post ),
+		'forkUrl'          => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ),
+		'compareUrl'       => $parent ? forkposter_compare_url( $parent->ID, $post->ID ) : '',
+		'dashboardUrl'     => forkposter_dashboard_url(),
 	);
 }

@@ -26,16 +26,25 @@ When the fork is published:
 
 Unpublishing, trashing or deleting the fork restores the original to a normal post. Chains (v1 → v2 → v3) are supported: every older version points to the newest one.
 
+= Updates and branches =
+
+Every fork is one of two kinds, chosen when you fork and changeable later in the Versions panel:
+
+* **Update:** replaces the original. Once published, the original is labeled "Earlier version" and points to it. If a post has several updates, it points to the newest.
+* **Branch:** takes the piece in a new direction alongside the original, for example when you split one idea into two posts. Once published, the original is labeled "Branched" and lists every branch ("I've since taken this piece in new directions: A and B"), and each branch links back to it.
+
+A post can have both: it then points to its update and also lists its branches. Branched posts are treated like earlier versions in every other way (hidden term, optional tag, cache clearing). Forks made before branches existed are updates.
+
 All labels and notices are added when the page is rendered. Nothing is written into your post titles or content, so deactivating the plugin leaves your posts exactly as you wrote them.
 
 == Usage ==
 
-* **Fork a post:** use the "Fork" link under a published post in Posts > All Posts, the "Fork this post" button in the editor's Versions panel, or "Fork this post" in the admin bar while viewing it.
+* **Fork a post:** use the "Fork" (update) or "Branch" links under a published post in Posts > All Posts, the "Fork as update" and "Fork as branch" buttons in the editor's Versions panel, or "Fork this post" in the admin bar while viewing it.
 * **Versions panel:** in the block editor's post sidebar. Shows where this post sits in its family, links to compare, and edits the version number and the "why I revisited it" note. Both are saved with the post and kept in its revision history. The classic editor gets the same controls in a Versions box.
 * **See all your versions:** Posts > Versions lists every forked post grouped with all its versions (published, earlier, drafts and branches), with word counts and links. Only you and other editors can see it.
 * **Compare versions:** from Posts > Versions or the editor's Versions box, compare any two versions of a piece. Changes are highlighted word by word in readable text, with an option to compare the raw HTML instead.
 * **Version numbers (optional):** turn on Settings > Forkposter > Version numbers. New forks are numbered automatically (1 → 2, 2.0 → 3.0; forking the same post twice gives 2 and 3), and the number shows in badges ("Earlier version · v.1"), notice links, the feed, the history list and Posts > Versions. Change any post's number in the editor's Versions box, and the display format (default `v.{version}`) in settings.
-* **Version history:** add the Version history block (or the `[forkposter_history]` shortcode) to a post to list every published version of it. In a block theme, put the block in the Single Posts template to show it on every post that has versions; it renders nothing on posts without other versions.
+* **Version history:** add the Version history block (or the `[forkposter_history]` shortcode) to a post to list every published version of it, plus the post's branches. In a block theme, put the block in the Single Posts template to show it on every post that has versions; it renders nothing on posts without other versions.
 * **Settings:** Settings > Forkposter for labels, notice wording, display toggles, and the optional tag.
 
 Notices accept `{link}` (the other version's title, linked) and `{date}` (its publish date).

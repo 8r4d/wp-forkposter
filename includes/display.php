@@ -18,24 +18,60 @@ function forkposter_enqueue_styles() {
 	wp_enqueue_style( 'forkposter' );
 }
 
+function forkposter_post_link_html( WP_Post $post ): string {
+	return sprintf(
+		'<a href="%s">%s</a>',
+		esc_url( get_permalink( $post ) ),
+		// Use the raw title so our own the_title filter can't add a badge inside the link.
+		esc_html( forkposter_title_with_version( $post ) )
+	);
+}
+
 /**
  * Fill {link} and {date} in a notice template with $target's details.
  */
 function forkposter_format_notice( string $template, WP_Post $target ): string {
-	$link = sprintf(
-		'<a href="%s">%s</a>',
-		esc_url( get_permalink( $target ) ),
-		// Use the raw title so our own the_title filter can't add a badge inside the link.
-		esc_html( forkposter_title_with_version( $target ) )
-	);
-
 	return strtr(
 		esc_html( $template ),
 		array(
-			'{link}' => $link,
+			'{link}' => forkposter_post_link_html( $target ),
 			'{date}' => esc_html( get_the_date( '', $target ) ),
 		)
 	);
+}
+
+/**
+ * Fill {links} in a notice template with a list of linked titles ("A, B and C").
+ *
+ * @param WP_Post[] $targets
+ */
+function forkposter_format_list_notice( string $template, array $targets ): string {
+	return strtr(
+		esc_html( $template ),
+		array( '{links}' => wp_sprintf_l( '%l', array_map( 'forkposter_post_link_html', $targets ) ) )
+	);
+}
+
+/**
+ * How a post relates to its versions, for badges, post states and status labels,
+ * or null if it has none. An original with an update shows as the earlier
+ * version even if it also has branches.
+ *
+ * @return array{key: string, label: string}|null
+ */
+function forkposter_role( int $post_id ): ?array {
+	if ( forkposter_is_superseded( $post_id ) ) {
+		return array( 'key' => 'superseded', 'label' => (string) forkposter_setting( 'old_label' ) );
+	}
+	if ( forkposter_is_branched( $post_id ) ) {
+		return array( 'key' => 'branched', 'label' => (string) forkposter_setting( 'branched_label' ) );
+	}
+	if ( forkposter_is_fork( $post_id ) && 'publish' === get_post_status( $post_id ) ) {
+		return forkposter_is_branch( $post_id )
+			? array( 'key' => 'branch', 'label' => (string) forkposter_setting( 'branch_label' ) )
+			: array( 'key' => 'fork', 'label' => (string) forkposter_setting( 'new_label' ) );
+	}
+	return null;
 }
 
 /**
@@ -46,9 +82,10 @@ function forkposter_format_notice( string $template, WP_Post $target ): string {
  *                        'feed' for RSS.
  */
 function forkposter_notices_html( int $post_id, string $context = 'single' ): string {
-	$latest = forkposter_get_latest( $post_id );
-	$parent = forkposter_get_published_parent( $post_id );
-	$html   = '';
+	$latest   = forkposter_get_latest( $post_id );
+	$branches = forkposter_get_branches( $post_id );
+	$parent   = forkposter_get_published_parent( $post_id );
+	$html     = '';
 
 	if ( $latest ) {
 		$html .= sprintf(
@@ -58,11 +95,21 @@ function forkposter_notices_html( int $post_id, string $context = 'single' ): st
 		);
 	}
 
-	// In lists, an older post only needs the pointer forward.
-	if ( $parent && ! ( 'list' === $context && $latest ) ) {
+	if ( $branches ) {
+		// The badge goes on the first line only.
+		$badge = $latest ? '' : sprintf( '<span class="forkposter-badge">%s</span> ', esc_html( forkposter_badge_text( forkposter_setting( 'branched_label' ), $post_id ) ) );
+		$html .= sprintf(
+			'<p class="forkposter-notice__line">%s%s</p>',
+			$badge,
+			forkposter_format_list_notice( forkposter_setting( 'branched_notice' ), $branches )
+		);
+	}
+
+	// In lists, an older post only needs the pointers forward.
+	if ( $parent && ! ( 'list' === $context && ( $latest || $branches ) ) ) {
 		$html .= sprintf(
 			'<p class="forkposter-notice__line">%s</p>',
-			forkposter_format_notice( forkposter_setting( 'fork_notice' ), $parent )
+			forkposter_format_notice( forkposter_setting( forkposter_is_branch( $post_id ) ? 'branch_notice' : 'fork_notice' ), $parent )
 		);
 
 		$note = get_post_meta( $post_id, FORKPOSTER_META_NOTE, true );
@@ -76,27 +123,31 @@ function forkposter_notices_html( int $post_id, string $context = 'single' ): st
 	}
 
 	$classes = array( 'forkposter-notice', 'forkposter-notice--' . $context );
-	$classes[] = $latest ? 'forkposter-notice--superseded' : 'forkposter-notice--fork';
+	if ( $latest ) {
+		$classes[] = 'forkposter-notice--superseded';
+	} elseif ( $branches ) {
+		$classes[] = 'forkposter-notice--branched';
+	} else {
+		$classes[] = forkposter_is_branch( $post_id ) ? 'forkposter-notice--branch' : 'forkposter-notice--fork';
+	}
 
 	return sprintf( '<aside class="%s">%s</aside>', esc_attr( implode( ' ', $classes ) ), $html );
 }
 
 /**
- * The title badge for a post, or '' if it isn't part of a version chain.
- * A post that is both a revision and since replaced shows as the earlier version.
+ * The title badge for a post, or '' if it has no other versions.
  */
 function forkposter_badge_html( int $post_id ): string {
-	if ( forkposter_is_superseded( $post_id ) ) {
-		$label = forkposter_setting( 'old_label' );
-		$class = 'forkposter-badge--superseded';
-	} elseif ( forkposter_is_fork( $post_id ) ) {
-		$label = forkposter_setting( 'new_label' );
-		$class = 'forkposter-badge--fork';
-	} else {
+	$role = forkposter_role( $post_id );
+	if ( ! $role ) {
 		return '';
 	}
 
-	return sprintf( ' <span class="forkposter-badge %s">%s</span>', esc_attr( $class ), esc_html( forkposter_badge_text( $label, $post_id ) ) );
+	return sprintf(
+		' <span class="forkposter-badge forkposter-badge--%s">%s</span>',
+		esc_attr( $role['key'] ),
+		esc_html( forkposter_badge_text( $role['label'], $post_id ) )
+	);
 }
 
 /**
@@ -213,11 +264,15 @@ function forkposter_post_class( array $classes, $class, $post_id ): array {
 		return $classes;
 	}
 
-	if ( forkposter_is_superseded( (int) $post_id ) ) {
+	$post_id = (int) $post_id;
+	if ( forkposter_is_superseded( $post_id ) ) {
 		$classes[] = 'forkposter-superseded';
 	}
-	if ( forkposter_is_fork( (int) $post_id ) ) {
-		$classes[] = 'forkposter-fork';
+	if ( forkposter_is_branched( $post_id ) ) {
+		$classes[] = 'forkposter-branched';
+	}
+	if ( forkposter_is_fork( $post_id ) ) {
+		$classes[] = forkposter_is_branch( $post_id ) ? 'forkposter-branch' : 'forkposter-fork';
 	}
 
 	return $classes;
@@ -246,28 +301,54 @@ function forkposter_history_html( int $post_id, string $wrapper_attributes = 'cl
 		return '';
 	}
 
-	$lineage = forkposter_get_lineage( $post_id );
-	if ( count( $lineage ) < 2 ) {
+	$lineage  = forkposter_get_lineage( $post_id );
+	$branches = forkposter_get_branches( $post_id );
+	if ( count( $lineage ) < 2 && ! $branches ) {
 		return '';
 	}
 
 	$items = '';
 	foreach ( $lineage as $version ) {
-		$label = sprintf(
-			'%s <span class="forkposter-history__date">%s</span>',
-			esc_html( forkposter_title_with_version( $version ) ),
-			esc_html( get_the_date( '', $version ) )
-		);
+		$items .= forkposter_history_item( $version, $post_id );
+	}
 
-		$items .= $version->ID === $post_id
-			? '<li class="forkposter-history__current" aria-current="page">' . $label . '</li>'
-			: '<li><a href="' . esc_url( get_permalink( $version ) ) . '">' . $label . '</a></li>';
+	$branch_list = '';
+	if ( $branches ) {
+		$branch_items = '';
+		foreach ( $branches as $branch ) {
+			$branch_items .= forkposter_history_item( $branch, $post_id );
+		}
+		$branch_list = sprintf(
+			'<p class="forkposter-history__heading">%s</p><ul class="forkposter-history__branches">%s</ul>',
+			esc_html__( 'Branched into', 'forkposter' ),
+			$branch_items
+		);
 	}
 
 	return sprintf(
-		'<nav %1$s aria-label="%2$s"><p class="forkposter-history__heading">%2$s</p><ol>%3$s</ol></nav>',
+		'<nav %1$s aria-label="%2$s"><p class="forkposter-history__heading">%2$s</p><ol>%3$s</ol>%4$s</nav>',
 		$wrapper_attributes,
 		esc_attr__( 'Versions of this piece', 'forkposter' ),
-		$items
+		$items,
+		$branch_list
 	);
+}
+
+/**
+ * One entry in the history list: linked unless it's the post being viewed,
+ * and marked when it's a branch.
+ */
+function forkposter_history_item( WP_Post $version, int $current_id ): string {
+	$label = sprintf(
+		'%s <span class="forkposter-history__date">%s</span>',
+		esc_html( forkposter_title_with_version( $version ) ),
+		esc_html( get_the_date( '', $version ) )
+	);
+	if ( forkposter_is_branch( $version->ID ) ) {
+		$label .= sprintf( ' <span class="forkposter-history__kind">%s</span>', esc_html( forkposter_setting( 'branch_label' ) ) );
+	}
+
+	return $version->ID === $current_id
+		? '<li class="forkposter-history__current" aria-current="page">' . $label . '</li>'
+		: '<li><a href="' . esc_url( get_permalink( $version ) ) . '">' . $label . '</a></li>';
 }

@@ -57,13 +57,27 @@
 	font-weight: 600;
 }
 
-.forkposter-history ol {
+.forkposter-history ol,
+.forkposter-history ul {
 	margin: 0;
 	padding-inline-start: 1.5em;
 }
 
 .forkposter-history__current {
 	font-weight: 600;
+}
+
+.forkposter-history__heading + ol + .forkposter-history__heading {
+	margin-top: 0.75em;
+}
+
+.forkposter-history__kind {
+	margin-inline-start: 0.25em;
+	padding: 0 0.4em;
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	font-size: 0.75em;
+	opacity: 0.7;
 }
 
 .forkposter-history__date {

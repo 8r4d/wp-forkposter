@@ -62,8 +62,9 @@ function forkposter_version_links() {
 	}
 
 	$links  = array();
+	// A branch is based on its original (see isBasedOn below) but isn't a version of it.
 	$parent = forkposter_get_published_parent( $post->ID );
-	if ( $parent ) {
+	if ( $parent && ! forkposter_is_branch( $post->ID ) ) {
 		$links['predecessor-version'] = $parent;
 	}
 

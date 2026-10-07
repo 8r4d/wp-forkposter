@@ -121,7 +121,7 @@ check( 'feed title prefixed', 0 === strpos( apply_filters( 'the_title_rss', 'Ori
 wp_reset_postdata();
 
 // ---------------------------------------------------------------------------
-section( 'Undo and branches' );
+section( 'Undo, and two updates of one post' );
 
 wp_trash_post( $v3 );
 check( 'v2 restored after v3 is trashed', ! forkposter_is_superseded( $v2 ) );
@@ -136,9 +136,100 @@ $a = forkposter_create_fork( get_post( $v1 ) );
 publish( $a );
 $b = forkposter_create_fork( get_post( $v1 ) );
 publish( $b );
-check( 'branch: original points at the newest fork', forkposter_get_successor( $v1 )->ID === $b );
+check( 'two updates: original points at the newest', forkposter_get_successor( $v1 )->ID === $b );
 wp_delete_post( $b, true );
-check( 'branch: falls back to the other fork after delete', forkposter_get_successor( $v1 )->ID === $a );
+check( 'two updates: falls back to the other after delete', forkposter_get_successor( $v1 )->ID === $a );
+
+// ---------------------------------------------------------------------------
+section( 'Branches' );
+settings( array( 'extra_tag' => 'superseded' ) );
+
+$idea = wp_insert_post( array( 'post_title' => 'Big idea', 'post_status' => 'publish' ) );
+check( 'fork links carry the kind', false !== strpos( forkposter_fork_url( $idea, FORKPOSTER_KIND_BRANCH ), 'kind=branch' ) );
+$econ = forkposter_create_fork( get_post( $idea ), FORKPOSTER_KIND_BRANCH );
+check( 'branch draft records its kind', forkposter_is_branch( $econ ) );
+delete_post_meta( $a, FORKPOSTER_META_KIND ); // Like a fork made before branches existed.
+check( 'forks without a kind are updates', FORKPOSTER_KIND_UPDATE === forkposter_get_kind( $a ) && forkposter_get_successor( $v1 )->ID === $a );
+check( 'original untouched while the branch is a draft', ! forkposter_has_moved_on( $idea ) );
+
+publish( $econ, array( 'post_title' => 'Big idea: the economics' ) );
+check( 'original lists the branch', wp_list_pluck( forkposter_get_branches( $idea ), 'ID' ) === array( $econ ) );
+check( 'a branch does not replace the original', ! forkposter_is_superseded( $idea ) && null === forkposter_get_latest( $idea ) );
+check( 'branched original gets the state term', has_term( FORKPOSTER_TERM_SUPERSEDED, FORKPOSTER_TAXONOMY, $idea ) );
+check( 'branched original gets the optional tag', has_term( 'superseded', 'post_tag', $idea ) );
+
+$culture = forkposter_create_fork( get_post( $idea ), FORKPOSTER_KIND_BRANCH );
+publish( $culture, array( 'post_title' => 'Big idea: the culture' ) );
+check( 'original lists both branches, oldest first', wp_list_pluck( forkposter_get_branches( $idea ), 'ID' ) === array( $econ, $culture ) );
+
+check( 'original badge is "Branched"', false !== strpos( forkposter_badge_html( $idea ), 'forkposter-badge--branched">Branched' ) );
+check( 'branch badge is "Branch"', false !== strpos( forkposter_badge_html( $econ ), 'forkposter-badge--branch">Branch' ) );
+$notice = forkposter_notices_html( $idea, 'single' );
+check( 'original notice links to both branches', false !== strpos( $notice, 'new directions' ) && false !== strpos( $notice, get_permalink( $econ ) ) && false !== strpos( $notice, get_permalink( $culture ) ) && false !== strpos( $notice, '</a> and <a' ) );
+$notice = forkposter_notices_html( $econ, 'single' );
+check( 'branch notice links back to the original', false !== strpos( $notice, 'branches off' ) && false !== strpos( $notice, get_permalink( $idea ) ) );
+$history = forkposter_history_html( $idea );
+check( "original's history lists its branches", false !== strpos( $history, 'Branched into' ) && false !== strpos( $history, 'the economics' ) && false !== strpos( $history, 'the culture' ) );
+check( "a branch's history marks it as a branch", false !== strpos( forkposter_history_html( $econ ), 'forkposter-history__kind' ) );
+check( 'dashboard status is "Branched"', 'branched' === forkposter_version_status( get_post( $idea ) )[1] );
+check( 'post list state is "Branched"', isset( forkposter_post_states( array(), get_post( $idea ) )['forkposter_branched'] ) );
+
+simulate_query( array( 'post_type' => 'post' ) );
+$GLOBALS['wp_query']->is_feed = true;
+$GLOBALS['post']               = get_post( $idea );
+setup_postdata( $GLOBALS['post'] );
+check( 'feed title prefixed "[Branched]"', 0 === strpos( apply_filters( 'the_title_rss', 'Big idea' ), '[Branched]' ) );
+wp_reset_postdata();
+
+simulate_query( array( 'p' => $econ ) );
+ob_start();
+do_action( 'wp_head' );
+$head = ob_get_clean();
+check( 'a branch is not marked as a version of the original', false === strpos( $head, 'predecessor-version' ) );
+check( 'a branch is still "based on" the original', false !== strpos( $head, '"isBasedOn"' ) );
+wp_reset_postdata();
+
+$copy = wp_insert_post( array( 'post_title' => 'Copy of Big idea', 'post_status' => 'publish' ) );
+add_post_meta( $copy, FORKPOSTER_META_BRANCHED_INTO, $econ );
+check( 'a copied branch link is ignored', ! forkposter_is_branched( $copy ) );
+
+// An update and branches together.
+$update = forkposter_create_fork( get_post( $idea ) );
+publish( $update, array( 'post_title' => 'Big idea, revisited' ) );
+check( 'with an update too: original points at it', forkposter_get_successor( $idea )->ID === $update );
+check( 'with an update too: branches still listed', 2 === count( forkposter_get_branches( $idea ) ) );
+check( 'with an update too: badge is "Earlier version"', false !== strpos( forkposter_badge_html( $idea ), 'forkposter-badge--superseded' ) );
+$notice = forkposter_notices_html( $idea, 'single' );
+check( 'with an update too: notice has both lines', false !== strpos( $notice, get_permalink( $update ) ) && false !== strpos( $notice, 'new directions' ) );
+
+// Switching kinds after publishing.
+update_post_meta( $culture, FORKPOSTER_META_KIND, FORKPOSTER_KIND_UPDATE );
+check( 'branch switched to update leaves the branch list', wp_list_pluck( forkposter_get_branches( $idea ), 'ID' ) === array( $econ ) );
+check( 'newest update still wins', forkposter_get_successor( $idea )->ID === $update );
+update_post_meta( $culture, FORKPOSTER_META_KIND, FORKPOSTER_KIND_BRANCH );
+check( 'switched back, it is listed again', wp_list_pluck( forkposter_get_branches( $idea ), 'ID' ) === array( $econ, $culture ) );
+
+// Unpublishing.
+wp_update_post( array( 'ID' => $update, 'post_status' => 'draft' ) );
+check( 'update unpublished: back to "Branched"', 'branched' === forkposter_role( $idea )['key'] );
+wp_trash_post( $econ );
+wp_update_post( array( 'ID' => $culture, 'post_status' => 'draft' ) );
+check( 'all branches gone: original restored', ! forkposter_has_moved_on( $idea ) );
+check( 'state term removed', ! has_term( FORKPOSTER_TERM_SUPERSEDED, FORKPOSTER_TAXONOMY, $idea ) );
+check( 'optional tag removed', ! has_term( 'superseded', 'post_tag', $idea ) );
+
+// Classic editor: changing the kind of a draft fork.
+ob_start();
+forkposter_render_meta_box( get_post( $culture ) );
+$box = ob_get_clean();
+check( 'meta box shows the kind, branch selected', (bool) preg_match( '#value="branch"\s+checked#', $box ) );
+$_POST = array(
+	'forkposter_meta_box_nonce' => wp_create_nonce( 'forkposter_save_meta_box' ),
+	'forkposter_kind'           => 'update',
+);
+forkposter_save_meta_box( $culture, get_post( $culture ) );
+check( 'meta box saves the kind', FORKPOSTER_KIND_UPDATE === forkposter_get_kind( $culture ) );
+$_POST = array();
 
 // ---------------------------------------------------------------------------
 section( 'Version numbers' );

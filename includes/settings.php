@@ -13,6 +13,10 @@ function forkposter_default_settings(): array {
 		'new_label'         => __( 'Revised', 'forkposter' ),
 		'superseded_notice' => __( 'I’ve revisited this piece. Read the updated version: {link} ({date})', 'forkposter' ),
 		'fork_notice'       => __( 'This is a revised version of an earlier piece: {link} ({date})', 'forkposter' ),
+		'branched_label'    => __( 'Branched', 'forkposter' ),
+		'branch_label'      => __( 'Branch', 'forkposter' ),
+		'branched_notice'   => __( 'I’ve since taken this piece in new directions: {links}', 'forkposter' ),
+		'branch_notice'     => __( 'This piece branches off from an earlier one: {link} ({date})', 'forkposter' ),
 		'show_title_badges' => 1,
 		'show_list_notes'   => 1,
 		'feed_labels'       => 1,
@@ -83,6 +87,7 @@ function forkposter_register_settings() {
 	);
 
 	add_settings_section( 'forkposter_wording', __( 'Labels and notices', 'forkposter' ), '__return_null', 'forkposter' );
+	add_settings_section( 'forkposter_branches', __( 'Branches', 'forkposter' ), 'forkposter_render_branches_section', 'forkposter' );
 	add_settings_section( 'forkposter_versions', __( 'Version numbers', 'forkposter' ), '__return_null', 'forkposter' );
 	add_settings_section( 'forkposter_display', __( 'Display', 'forkposter' ), '__return_null', 'forkposter' );
 	add_settings_section( 'forkposter_sharing', __( 'Social sharing', 'forkposter' ), '__return_null', 'forkposter' );
@@ -94,6 +99,10 @@ function forkposter_register_settings() {
 		'fork_notice'       => array( 'forkposter_wording', 'textarea', __( 'Notice on newer posts', 'forkposter' ), __( '{link} is the earlier post’s title, linked. {date} is its publish date.', 'forkposter' ) ),
 		'show_versions'     => array( 'forkposter_versions', 'checkbox', __( 'Version numbers', 'forkposter' ), __( 'Number each version and show the number in badges, notices, the feed and version lists. New forks are numbered automatically; you can change any number in the editor’s Versions box.', 'forkposter' ) ),
 		'version_format'    => array( 'forkposter_versions', 'text', __( 'Version format', 'forkposter' ), __( 'How numbers are shown. {version} is the number you assign, so “v.{version}” shows “v.2.0”.', 'forkposter' ) ),
+		'branched_label'    => array( 'forkposter_branches', 'text', __( 'Label for branched posts', 'forkposter' ), __( 'Shown as a badge on a post that has branches but no update.', 'forkposter' ) ),
+		'branch_label'      => array( 'forkposter_branches', 'text', __( 'Label for branches', 'forkposter' ), __( 'Shown as a badge on posts that branch off an earlier one.', 'forkposter' ) ),
+		'branched_notice'   => array( 'forkposter_branches', 'textarea', __( 'Notice on branched posts', 'forkposter' ), __( '{links} is every branch’s title, linked, as a list (“A and B”).', 'forkposter' ) ),
+		'branch_notice'     => array( 'forkposter_branches', 'textarea', __( 'Notice on branches', 'forkposter' ), __( '{link} is the earlier post’s title, linked. {date} is its publish date.', 'forkposter' ) ),
 		'show_title_badges' => array( 'forkposter_display', 'checkbox', __( 'Title badges', 'forkposter' ), __( 'Add the label next to post titles on the site.', 'forkposter' ) ),
 		'show_list_notes'   => array( 'forkposter_display', 'checkbox', __( 'Notes in post lists', 'forkposter' ), __( 'Show a short version note above the excerpt on the home page and archives.', 'forkposter' ) ),
 		'feed_labels'       => array( 'forkposter_display', 'checkbox', __( 'Label RSS items', 'forkposter' ), __( 'Prefix older posts’ feed titles with the label and add the link to the newer version.', 'forkposter' ) ),
@@ -116,6 +125,10 @@ function forkposter_register_settings() {
 			)
 		);
 	}
+}
+
+function forkposter_render_branches_section() {
+	echo '<p>' . esc_html__( 'Fork a post as a branch when you take it in a new direction instead of replacing it. The original lists all its branches, and each branch links back.', 'forkposter' ) . '</p>';
 }
 
 function forkposter_render_settings_field( array $args ) {

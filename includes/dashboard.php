@@ -113,7 +113,8 @@ function forkposter_get_families(): array {
 		$family['updated'] = max( array_map( fn( $id ) => get_post( $id )->post_modified_gmt, $family['members'] ) );
 
 		foreach ( $family['children'] as &$kids ) {
-			usort( $kids, fn( $a, $b ) => strcmp( get_post( $a )->post_date_gmt, get_post( $b )->post_date_gmt ) );
+			// post_date rather than post_date_gmt: drafts have an empty GMT date, which would sort them first.
+			usort( $kids, fn( $a, $b ) => strcmp( get_post( $a )->post_date, get_post( $b )->post_date ) ?: $a <=> $b );
 		}
 	}
 	unset( $family, $kids );
@@ -189,13 +190,17 @@ function forkposter_word_count( WP_Post $post ): int {
 }
 
 /**
- * Short status label for a version: Current, Earlier version, Draft, Scheduled, ...
+ * Short status label for a version: Current, Earlier version, Branched, Draft, Scheduled, ...
  */
 function forkposter_version_status( WP_Post $post ): array {
 	if ( 'publish' === $post->post_status ) {
-		return forkposter_is_superseded( $post->ID )
-			? array( forkposter_setting( 'old_label' ), 'superseded' )
-			: array( __( 'Current', 'forkposter' ), 'current' );
+		if ( forkposter_is_superseded( $post->ID ) ) {
+			return array( forkposter_setting( 'old_label' ), 'superseded' );
+		}
+		if ( forkposter_is_branched( $post->ID ) ) {
+			return array( forkposter_setting( 'branched_label' ), 'branched' );
+		}
+		return array( __( 'Current', 'forkposter' ), 'current' );
 	}
 
 	$status = get_post_status_object( $post->post_status );
@@ -294,7 +299,12 @@ function forkposter_render_version_row( WP_Post $post, int $depth ) {
 		$actions[] = sprintf( '<a href="%s">%s</a>', esc_url( get_preview_post_link( $post ) ), esc_html__( 'Preview', 'forkposter' ) );
 	}
 	if ( forkposter_can_fork( $post ) ) {
-		$actions[] = sprintf( '<a href="%s">%s</a>', esc_url( forkposter_fork_url( $post->ID ) ), esc_html__( 'Fork', 'forkposter' ) );
+		$actions[] = sprintf( '<a href="%s">%s</a>', esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ) ), esc_html__( 'Fork', 'forkposter' ) );
+		$actions[] = sprintf( '<a href="%s">%s</a>', esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ) ), esc_html__( 'Branch', 'forkposter' ) );
+	}
+
+	if ( $depth > 0 && forkposter_is_branch( $post->ID ) ) {
+		$title .= sprintf( ' <span class="forkposter-kind">%s</span>', esc_html( forkposter_setting( 'branch_label' ) ) );
 	}
 
 	$date = 'publish' === $post->post_status || 'future' === $post->post_status
