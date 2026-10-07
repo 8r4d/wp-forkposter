@@ -28,6 +28,8 @@ All labels and notices are added when the page is rendered. Nothing is written i
 == Usage ==
 
 * **Fork a post:** use the "Fork" link under a published post in Posts > All Posts, the "Fork this post" button in the editor's Versions box, or "Fork this post" in the admin bar while viewing it.
+* **See all your versions:** Posts > Versions lists every forked post grouped with all its versions (published, earlier, drafts and branches), with word counts and links. Only you and other editors can see it.
+* **Compare versions:** from Posts > Versions or the editor's Versions box, compare any two versions of a piece. Changes are highlighted word by word in readable text, with an option to compare the raw HTML instead.
 * **Version history:** add `[forkposter_history]` to a post to list every version of it.
 * **Settings:** Settings > Forkposter for labels, notice wording, display toggles, and the optional tag.
 

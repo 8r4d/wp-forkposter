@@ -1,0 +1,110 @@
+/* Posts > Versions */
+
+.forkposter-family {
+	margin: 24px 0;
+}
+
+.forkposter-family__header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 12px;
+	margin-bottom: 8px;
+}
+
+.forkposter-family__header h2 {
+	margin: 0;
+	font-size: 1.2em;
+}
+
+.forkposter-family__meta {
+	color: #646970;
+}
+
+.forkposter-family__header .button {
+	margin-inline-start: auto;
+}
+
+.forkposter-family__table .num {
+	text-align: right;
+}
+
+.forkposter-tree {
+	display: inline-block;
+	padding-inline-start: calc(var(--depth, 0) * 20px);
+}
+
+.forkposter-tree__branch {
+	color: #8c8f94;
+}
+
+.forkposter-status {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 999px;
+	font-size: 12px;
+	line-height: 1.8;
+	white-space: nowrap;
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.forkposter-status--current {
+	background: #edfaef;
+	color: #00450c;
+}
+
+.forkposter-status--superseded {
+	background: #fcf9e8;
+	color: #614200;
+}
+
+.forkposter-empty {
+	margin-top: 16px;
+	padding: 16px 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+/* Compare view */
+
+.forkposter-compare-form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 16px;
+	margin: 16px 0;
+}
+
+.forkposter-compare-form select {
+	max-width: 28em;
+}
+
+.forkposter-compare-summary {
+	color: #646970;
+}
+
+.forkposter-diff table.diff {
+	margin-bottom: 24px;
+	background: #fff;
+}
+
+.forkposter-diff .diff-title {
+	padding: 8px 0;
+	font-weight: 600;
+	text-align: start;
+}
+
+/* Prose reads better wrapped than in core's code-style diff. */
+.forkposter-diff table.diff th {
+	font-family: inherit;
+	font-size: 13px;
+	color: #646970;
+}
+
+.forkposter-diff table.diff td {
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+}

@@ -103,6 +103,7 @@ function forkposter_render_meta_box( WP_Post $post ) {
 	if ( $parent ) {
 		/* translators: %s: linked post title */
 		printf( '<p>' . esc_html__( 'Forked from %s.', 'forkposter' ) . '</p>', forkposter_admin_post_link( $parent ) );
+		printf( '<p><a href="%s">%s</a></p>', esc_url( forkposter_compare_url( $parent->ID, $post->ID ) ), esc_html__( 'Compare with previous version', 'forkposter' ) );
 
 		if ( 'publish' !== $post->post_status ) {
 			printf(
@@ -138,6 +139,10 @@ function forkposter_render_meta_box( WP_Post $post ) {
 		}
 	} elseif ( ! $parent_id && ! $successor && 'publish' !== $post->post_status ) {
 		echo '<p class="description">' . esc_html__( 'Publish this post to be able to fork it later.', 'forkposter' ) . '</p>';
+	}
+
+	if ( $parent || $successor ) {
+		printf( '<p><a href="%s">%s</a></p>', esc_url( forkposter_dashboard_url() ), esc_html__( 'All versions →', 'forkposter' ) );
 	}
 }
 
