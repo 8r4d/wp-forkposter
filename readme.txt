@@ -69,6 +69,12 @@ Actions:
 * `forkposter_purge_post( $post_id )` — a post's cached page should be cleared.
 * `forkposter_purge_all()` — every cached page should be cleared (settings changed).
 
+REST API (for apps outside wp-admin; authenticate with an application password):
+
+* Posts of forkable types have `meta._forkposter_version`, `meta._forkposter_note` and `meta._forkposter_kind` (editable), `meta._forkposter_parent` (read-only), and a read-only `forkposter` field: `state` (`current`, `superseded`, `branched`, `unpublished`), `kind`, `version`, `parent`, `successor`, `latest`, `branches`, `lineage` and `can_fork`.
+* `POST /wp-json/forkposter/v1/posts/<id>/fork` with `kind` (`update` or `branch`) forks a published post and responds `201` with the new draft, as `/wp/v2/posts` would in edit context.
+* `GET /wp-json/forkposter/v1/families` lists every forked post grouped with its versions in tree order, like Posts > Versions. Pass `post=<id>` for just that post's family.
+
 To exclude earlier versions from a query:
 
     'tax_query' => array( array(

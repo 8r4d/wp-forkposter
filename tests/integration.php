@@ -311,6 +311,48 @@ check( 'panel data names the parent', $data['parent'] && $data['parent']['id'] =
 check( 'panel data includes a compare link', false !== strpos( $data['compareUrl'], 'from=' . $n1 ) );
 
 // ---------------------------------------------------------------------------
+section( 'REST API' );
+settings( array( 'show_versions' => 1 ) );
+
+$r1 = wp_insert_post( array( 'post_title' => 'App original', 'post_status' => 'publish' ) );
+
+$request = new WP_REST_Request( 'POST', "/forkposter/v1/posts/$r1/fork" );
+$request->set_param( 'kind', 'branch' );
+$response = rest_do_request( $request );
+$r2       = (int) ( $response->get_data()['id'] ?? 0 );
+check( 'fork endpoint creates a draft', 201 === $response->get_status() && 'draft' === get_post_status( $r2 ) );
+check( 'fork endpoint sets the kind', forkposter_is_branch( $r2 ) );
+check( 'fork endpoint responds with the post in edit context', isset( $response->get_data()['content']['raw'] ) );
+check( 'fork endpoint points to the new post', false !== strpos( $response->get_headers()['Location'] ?? '', "/wp/v2/posts/$r2" ) );
+check( 'draft forks cannot be forked', 403 === rest_do_request( new WP_REST_Request( 'POST', "/forkposter/v1/posts/$r2/fork" ) )->get_status() );
+
+publish( $r2 );
+$data = rest_do_request( new WP_REST_Request( 'GET', "/wp/v2/posts/$r1" ) )->get_data();
+check( 'post field shows the original as branched', 'branched' === $data['forkposter']['state'] && array( $r2 ) === wp_list_pluck( $data['forkposter']['branches'], 'id' ) );
+check( 'post field shows the version', '1' === $data['forkposter']['version'] );
+$data = rest_do_request( new WP_REST_Request( 'GET', "/wp/v2/posts/$r2" ) )->get_data();
+check( 'post field shows the fork’s parent and kind', $r1 === $data['forkposter']['parent']['id'] && 'branch' === $data['forkposter']['kind'] );
+check( 'parent meta is exposed', $r1 === $data['meta'][ FORKPOSTER_META_PARENT ] );
+
+$request = new WP_REST_Request( 'POST', "/wp/v2/posts/$r2" );
+$request->set_param( 'meta', array( FORKPOSTER_META_PARENT => $v1 ) );
+check( 'parent meta cannot be changed', 403 === rest_do_request( $request )->get_status() && $r1 === forkposter_get_parent_id( $r2 ) );
+$request = new WP_REST_Request( 'POST', "/wp/v2/posts/$r2" );
+$request->set_param( 'meta', array( FORKPOSTER_META_PARENT => $r1, FORKPOSTER_META_NOTE => 'From the app' ) );
+check( 'saving the unchanged parent alongside other meta works', 200 === rest_do_request( $request )->get_status() && 'From the app' === get_post_meta( $r2, FORKPOSTER_META_NOTE, true ) );
+
+$request = new WP_REST_Request( 'GET', '/forkposter/v1/families' );
+$request->set_param( 'post', $r2 );
+$families = rest_do_request( $request )->get_data();
+check( 'families endpoint finds the family', 1 === count( $families ) && $r1 === $families[0]['root'] );
+check( 'families endpoint lists versions in tree order', array( $r1, $r2 ) === wp_list_pluck( $families[0]['versions'], 'id' ) && $r1 === $families[0]['versions'][1]['parent'] );
+
+wp_set_current_user( 0 );
+check( 'families endpoint needs a login', 401 === rest_do_request( new WP_REST_Request( 'GET', '/forkposter/v1/families' ) )->get_status() );
+check( 'fork endpoint needs a login', 401 === rest_do_request( new WP_REST_Request( 'POST', "/forkposter/v1/posts/$r1/fork" ) )->get_status() );
+wp_set_current_user( 1 );
+
+// ---------------------------------------------------------------------------
 section( 'Search engine hints' );
 
 $v2_url = get_permalink( $n2 );
