@@ -11,6 +11,31 @@ defined( 'ABSPATH' ) || exit;
 add_action( 'init', 'forkposter_register_styles' );
 function forkposter_register_styles() {
 	wp_register_style( 'forkposter', FORKPOSTER_URL . 'assets/forkposter.css', array(), FORKPOSTER_VERSION );
+
+	$css = forkposter_badge_color_css();
+	if ( '' !== $css ) {
+		wp_add_inline_style( 'forkposter', $css );
+	}
+}
+
+/**
+ * Custom properties for the badge colors chosen in Settings > Forkposter, or '' for theme colors.
+ */
+function forkposter_badge_color_css(): string {
+	$props = array();
+	foreach ( array( 'badge_color' => 'color', 'badge_background' => 'background' ) as $key => $prop ) {
+		$color = sanitize_hex_color( (string) forkposter_setting( $key ) );
+		if ( $color ) {
+			$props[] = '--forkposter-badge-' . $prop . ':' . $color;
+		}
+	}
+	if ( ! $props ) {
+		return '';
+	}
+
+	// Chosen colors are shown at full strength rather than faded like the theme default.
+	$props[] = '--forkposter-badge-opacity:1';
+	return ':root{' . implode( ';', $props ) . '}';
 }
 
 add_action( 'wp_enqueue_scripts', 'forkposter_enqueue_styles' );

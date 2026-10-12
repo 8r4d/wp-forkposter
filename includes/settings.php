@@ -24,7 +24,16 @@ function forkposter_default_settings(): array {
 		'show_versions'     => 0,
 		'version_format'    => 'v.{version}',
 		'extra_tag'         => '',
+		'badge_color'       => '',
+		'badge_background'  => '',
 	);
+}
+
+/**
+ * Keys that hold an optional hex color; empty means "use the theme's colors".
+ */
+function forkposter_color_settings(): array {
+	return array( 'badge_color', 'badge_background' );
 }
 
 /**
@@ -51,6 +60,11 @@ function forkposter_sanitize_settings( $input ): array {
 	foreach ( $defaults as $key => $default ) {
 		if ( in_array( $key, forkposter_checkbox_settings(), true ) ) {
 			$clean[ $key ] = empty( $input[ $key ] ) ? 0 : 1;
+			continue;
+		}
+
+		if ( in_array( $key, forkposter_color_settings(), true ) ) {
+			$clean[ $key ] = isset( $input[ $key ] ) ? (string) sanitize_hex_color( $input[ $key ] ) : '';
 			continue;
 		}
 
@@ -90,6 +104,7 @@ function forkposter_register_settings() {
 	add_settings_section( 'forkposter_branches', __( 'Branches', 'forkposter' ), 'forkposter_render_branches_section', 'forkposter' );
 	add_settings_section( 'forkposter_versions', __( 'Version numbers', 'forkposter' ), '__return_null', 'forkposter' );
 	add_settings_section( 'forkposter_display', __( 'Display', 'forkposter' ), '__return_null', 'forkposter' );
+	add_settings_section( 'forkposter_colors', __( 'Badge colors', 'forkposter' ), 'forkposter_render_colors_section', 'forkposter' );
 	add_settings_section( 'forkposter_sharing', __( 'Social sharing', 'forkposter' ), '__return_null', 'forkposter' );
 
 	$fields = array(
@@ -107,6 +122,8 @@ function forkposter_register_settings() {
 		'show_list_notes'   => array( 'forkposter_display', 'checkbox', __( 'Notes in post lists', 'forkposter' ), __( 'Show a short version note above the excerpt on the home page and archives.', 'forkposter' ) ),
 		'feed_labels'       => array( 'forkposter_display', 'checkbox', __( 'Label RSS items', 'forkposter' ), __( 'Prefix older posts’ feed titles with the label and add the link to the newer version.', 'forkposter' ) ),
 		'seo_hints'         => array( 'forkposter_display', 'checkbox', __( 'Search engine hints', 'forkposter' ), __( 'Tell search engines how versions relate: version links in the page head, and “based on” structured data on newer posts (added to Yoast, Rank Math or All in One SEO data when one is active).', 'forkposter' ) ),
+		'badge_color'       => array( 'forkposter_colors', 'color', __( 'Text and border', 'forkposter' ), __( 'Leave empty to use the theme’s text color.', 'forkposter' ) ),
+		'badge_background'  => array( 'forkposter_colors', 'color', __( 'Background', 'forkposter' ), __( 'Leave empty for no background.', 'forkposter' ) ),
 		'extra_tag'         => array( 'forkposter_sharing', 'text', __( 'Also tag older posts with', 'forkposter' ), __( 'Optional. Many auto-share plugins can only exclude by tag or category. Enter a tag (for example “superseded”) and exclude it in those plugins. It is removed again if the post stops being an earlier version.', 'forkposter' ) ),
 	);
 
@@ -129,6 +146,20 @@ function forkposter_register_settings() {
 
 function forkposter_render_branches_section() {
 	echo '<p>' . esc_html__( 'Fork a post as a branch when you take it in a new direction instead of replacing it. The original lists all its branches, and each branch links back.', 'forkposter' ) . '</p>';
+}
+
+function forkposter_render_colors_section() {
+	echo '<p>' . esc_html__( 'By default badges take their color from the theme. Pick colors here to make them stand out.', 'forkposter' ) . '</p>';
+}
+
+add_action( 'admin_enqueue_scripts', 'forkposter_enqueue_settings_assets' );
+function forkposter_enqueue_settings_assets( $hook ) {
+	if ( 'settings_page_forkposter' !== $hook ) {
+		return;
+	}
+	wp_enqueue_style( 'wp-color-picker' );
+	wp_enqueue_script( 'wp-color-picker' );
+	wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$(".forkposter-color").wpColorPicker();});' );
 }
 
 function forkposter_render_settings_field( array $args ) {
@@ -154,6 +185,15 @@ function forkposter_render_settings_field( array $args ) {
 				esc_attr( $id ),
 				esc_attr( $name ),
 				esc_textarea( $value )
+			);
+			break;
+
+		case 'color':
+			printf(
+				'<input type="text" id="%1$s" name="%2$s" class="forkposter-color" value="%3$s">',
+				esc_attr( $id ),
+				esc_attr( $name ),
+				esc_attr( $value )
 			);
 			break;
 

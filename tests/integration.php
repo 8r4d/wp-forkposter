@@ -392,6 +392,20 @@ check( 'changing settings clears everything', did_action( 'forkposter_purge_all'
 settings( array( 'show_versions' => 1 ) );
 
 // ---------------------------------------------------------------------------
+section( 'Badge colors' );
+
+settings( array() );
+check( 'no colors: no inline CSS', '' === forkposter_badge_color_css() );
+$clean = forkposter_sanitize_settings( array( 'badge_color' => '#AA0000', 'badge_background' => 'red; } body { display:none' ) );
+check( 'valid hex color is kept', '#AA0000' === $clean['badge_color'] );
+check( 'invalid color is dropped', '' === $clean['badge_background'] );
+settings( array( 'badge_color' => '#aa0000', 'badge_background' => '#fff' ) );
+$css = forkposter_badge_color_css();
+check( 'colors become custom properties', false !== strpos( $css, '--forkposter-badge-color:#aa0000' ) && false !== strpos( $css, '--forkposter-badge-background:#fff' ) );
+check( 'custom colors are not faded', false !== strpos( $css, '--forkposter-badge-opacity:1' ) );
+settings( array() );
+
+// ---------------------------------------------------------------------------
 section( 'Duplicate post plugins' );
 
 $excluded = apply_filters( 'duplicate_post_excludelist_filter', array() );

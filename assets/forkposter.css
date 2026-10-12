@@ -1,4 +1,7 @@
-/* Colors come from the theme (currentColor) so the labels fit light and dark themes. */
+/*
+ * Colors come from the theme (currentColor) so the labels fit light and dark themes.
+ * Badge colors can be overridden in Settings > Forkposter, which sets the custom properties below.
+ */
 
 .forkposter-badge {
 	display: inline-block;
@@ -6,14 +9,17 @@
 	padding: 0.15em 0.6em;
 	border: 1px solid currentColor;
 	border-radius: 999px;
-	font-size: 0.55em;
+	background: var(--forkposter-badge-background, transparent);
+	color: var(--forkposter-badge-color, inherit);
+	font-size: 0.75rem;
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	line-height: 1.4;
 	text-transform: uppercase;
-	vertical-align: middle;
+	vertical-align: top;
 	white-space: nowrap;
-	opacity: 0.7;
+	margin-top: 0.5rem;
+	opacity: var(--forkposter-badge-opacity, 0.7);
 }
 
 .forkposter-notice .forkposter-badge {

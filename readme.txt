@@ -45,13 +45,13 @@ All labels and notices are added when the page is rendered. Nothing is written i
 * **Compare versions:** from Posts > Versions or the editor's Versions box, compare any two versions of a piece. Changes are highlighted word by word in readable text, with an option to compare the raw HTML instead.
 * **Version numbers (optional):** turn on Settings > Forkposter > Version numbers. New forks are numbered automatically (1 → 2, 2.0 → 3.0; forking the same post twice gives 2 and 3), and the number shows in badges ("Earlier version · v.1"), notice links, the feed, the history list and Posts > Versions. Change any post's number in the editor's Versions box, and the display format (default `v.{version}`) in settings.
 * **Version history:** add the Version history block (or the `[forkposter_history]` shortcode) to a post to list every published version of it, plus the post's branches. In a block theme, put the block in the Single Posts template to show it on every post that has versions; it renders nothing on posts without other versions.
-* **Settings:** Settings > Forkposter for labels, notice wording, display toggles, and the optional tag.
+* **Settings:** Settings > Forkposter for labels, notice wording, display toggles, badge colors, and the optional tag.
 
 Notices accept `{link}` (the other version's title, linked) and `{date}` (its publish date).
 
 == Styling ==
 
-Posts get `forkposter-superseded` or `forkposter-fork` in their post classes. Notices use `.forkposter-notice` (with `--single`, `--list`, `--superseded`, `--fork` modifiers) and badges use `.forkposter-badge`.
+Posts get `forkposter-superseded` or `forkposter-fork` in their post classes. Notices use `.forkposter-notice` (with `--single`, `--list`, `--superseded`, `--fork` modifiers) and badges use `.forkposter-badge`. Badge colors can also be set from a theme with the `--forkposter-badge-color`, `--forkposter-badge-background` and `--forkposter-badge-opacity` custom properties.
 
 == For developers ==
 
