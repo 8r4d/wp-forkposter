@@ -116,6 +116,8 @@ function forkposter_editor_data( WP_Post $post ): array {
 		'forkBranchUrl'    => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ),
 		'versionsEnabled'  => forkposter_versions_enabled(),
 		'versionFormat'    => (string) forkposter_setting( 'version_format' ),
+		'branchFormat'     => (string) forkposter_setting( 'branch_format' ),
+		'isFork'           => (bool) $parent_id,
 		'oldLabel'         => (string) forkposter_setting( 'old_label' ),
 		'parent'           => $parent ? forkposter_editor_post_ref( $parent ) : null,
 		'parentMissing'    => $parent_id && ! $parent,

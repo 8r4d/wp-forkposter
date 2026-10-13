@@ -345,7 +345,7 @@ function forkposter_history_html( int $post_id, string $wrapper_attributes = 'cl
 		}
 		$branch_list = sprintf(
 			'<p class="forkposter-history__heading">%s</p><ul class="forkposter-history__branches">%s</ul>',
-			esc_html__( 'Branched into', 'forkposter' ),
+			esc_html( forkposter_setting( 'branches_heading' ) ),
 			$branch_items
 		);
 	}
@@ -353,7 +353,7 @@ function forkposter_history_html( int $post_id, string $wrapper_attributes = 'cl
 	return sprintf(
 		'<nav %1$s aria-label="%2$s"><p class="forkposter-history__heading">%2$s</p><ol>%3$s</ol>%4$s</nav>',
 		$wrapper_attributes,
-		esc_attr__( 'Versions of this piece', 'forkposter' ),
+		esc_attr( forkposter_setting( 'history_heading' ) ),
 		$items,
 		$branch_list
 	);

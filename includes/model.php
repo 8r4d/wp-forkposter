@@ -255,7 +255,8 @@ function forkposter_set_version( int $post_id, string $version ) {
 
 /**
  * A post's version formatted for display ("v.2.0"), or '' when version numbers
- * are off or the post has none.
+ * are off or the post has none. Branches, and originals that have branches but
+ * no update, use the branch format when one is set.
  */
 function forkposter_version_label( int $post_id ): string {
 	$version = forkposter_versions_enabled() ? forkposter_get_version( $post_id ) : '';
@@ -263,7 +264,11 @@ function forkposter_version_label( int $post_id ): string {
 		return '';
 	}
 
-	$format = (string) forkposter_setting( 'version_format' );
+	$branchy = forkposter_is_branch( $post_id ) || ( forkposter_is_branched( $post_id ) && ! forkposter_is_superseded( $post_id ) );
+	$format  = $branchy ? (string) forkposter_setting( 'branch_format' ) : '';
+	if ( '' === $format ) {
+		$format = (string) forkposter_setting( 'version_format' );
+	}
 	return false === strpos( $format, '{version}' ) ? $version : str_replace( '{version}', $version, $format );
 }
 

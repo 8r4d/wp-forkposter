@@ -25,13 +25,12 @@
 	var META_NOTE = '_forkposter_note';
 	var META_KIND = '_forkposter_kind';
 
-	function formatVersion( version ) {
+	function formatVersion( version, isBranch ) {
 		if ( ! version ) {
 			return '';
 		}
-		return data.versionFormat.indexOf( '{version}' ) === -1
-			? version
-			: data.versionFormat.split( '{version}' ).join( version );
+		var format = ( isBranch && data.branchFormat ) || data.versionFormat;
+		return format.indexOf( '{version}' ) === -1 ? version : format.split( '{version}' ).join( version );
 	}
 
 	function PostLink( props ) {
@@ -66,6 +65,8 @@
 
 		var isPublished = state.savedStatus === 'publish';
 		var version = state.meta[ META_VERSION ] || '';
+		var isBranch =
+			( data.isFork && state.meta[ META_KIND ] === 'branch' ) || ( data.branches.length > 0 && ! data.successor );
 		var parts = [];
 
 		if ( data.versionsEnabled ) {
@@ -80,7 +81,7 @@
 						setMeta( META_VERSION, value );
 					},
 					help: version
-						? sprintf( /* translators: %s: formatted version, e.g. v.2.0 */ __( 'Shown as “%s”', 'forkposter' ), formatVersion( version ) )
+						? sprintf( /* translators: %s: formatted version, e.g. v.2.0 */ __( 'Shown as “%s”', 'forkposter' ), formatVersion( version, isBranch ) )
 						: __( 'For example 2 or 2.0', 'forkposter' ),
 					__next40pxDefaultSize: true,
 					__nextHasNoMarginBottom: true,

@@ -170,6 +170,10 @@ $notice = forkposter_notices_html( $econ, 'single' );
 check( 'branch notice links back to the original', false !== strpos( $notice, 'branches off' ) && false !== strpos( $notice, get_permalink( $idea ) ) );
 $history = forkposter_history_html( $idea );
 check( "original's history lists its branches", false !== strpos( $history, 'Branched into' ) && false !== strpos( $history, 'the economics' ) && false !== strpos( $history, 'the culture' ) );
+settings( array( 'history_heading' => 'All versions', 'branches_heading' => 'Spin-offs' ) );
+$history = forkposter_history_html( $idea );
+check( 'history headings come from settings', false !== strpos( $history, '>All versions</p>' ) && false !== strpos( $history, '>Spin-offs</p>' ) );
+settings( array() );
 check( "a branch's history marks it as a branch", false !== strpos( forkposter_history_html( $econ ), 'forkposter-history__kind' ) );
 check( 'dashboard status is "Branched"', 'branched' === forkposter_version_status( get_post( $idea ) )[1] );
 check( 'post list state is "Branched"', isset( forkposter_post_states( array(), get_post( $idea ) )['forkposter_branched'] ) );
@@ -269,6 +273,14 @@ check( 'post list state includes the number', 'Earlier version · v.1' === ( $st
 
 settings( array( 'show_versions' => 1, 'version_format' => 'Version {version}' ) );
 check( 'custom format', 'Version 2.0' === forkposter_version_label( $n2 ) );
+settings( array( 'show_versions' => 1, 'branch_format' => 'b{version}' ) );
+check( 'branch format leaves updates alone', 'v.2.0' === forkposter_version_label( $n2 ) );
+update_post_meta( $n2, FORKPOSTER_META_KIND, FORKPOSTER_KIND_BRANCH );
+check( 'branch format applies to branches', 'b2.0' === forkposter_version_label( $n2 ) );
+check( 'branch format applies to the branched original', 'b1' === forkposter_version_label( $n1 ) && false !== strpos( forkposter_badge_html( $n1 ), 'Branched · b1' ) );
+settings( array( 'show_versions' => 1 ) );
+check( 'empty branch format falls back to the version format', 'v.2.0' === forkposter_version_label( $n2 ) );
+update_post_meta( $n2, FORKPOSTER_META_KIND, FORKPOSTER_KIND_UPDATE );
 settings( array( 'show_versions' => 1 ) );
 
 $GLOBALS['post'] = get_post( $n2 );
