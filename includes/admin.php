@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
 add_filter( 'post_row_actions', 'forkposter_row_actions', 10, 2 );
 add_filter( 'page_row_actions', 'forkposter_row_actions', 10, 2 );
 function forkposter_row_actions( array $actions, WP_Post $post ): array {
-	if ( forkposter_can_fork( $post ) ) {
+	if ( forkposter_can_fork( $post, FORKPOSTER_KIND_UPDATE ) ) {
 		$actions['forkposter_fork'] = sprintf(
 			'<a href="%s" aria-label="%s">%s</a>',
 			esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ) ),
@@ -16,6 +16,8 @@ function forkposter_row_actions( array $actions, WP_Post $post ): array {
 			esc_attr( sprintf( __( 'Fork “%s” into an updated version', 'forkposter' ), $post->post_title ) ),
 			esc_html__( 'Fork', 'forkposter' )
 		);
+	}
+	if ( forkposter_can_fork( $post, FORKPOSTER_KIND_BRANCH ) ) {
 		$actions['forkposter_branch'] = sprintf(
 			'<a href="%s" aria-label="%s">%s</a>',
 			esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ) ),
@@ -34,17 +36,21 @@ function forkposter_admin_bar_link( WP_Admin_Bar $bar ) {
 	}
 
 	$post = get_queried_object();
-	if ( ! $post instanceof WP_Post || ! forkposter_can_fork( $post ) ) {
+	if ( ! $post instanceof WP_Post || ! forkposter_can_fork( $post, FORKPOSTER_KIND_BRANCH ) ) {
 		return;
 	}
 
+	$can_update = forkposter_can_fork( $post, FORKPOSTER_KIND_UPDATE );
 	$bar->add_node(
 		array(
 			'id'    => 'forkposter-fork',
-			'title' => __( 'Fork this post', 'forkposter' ),
-			'href'  => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ),
+			'title' => $can_update ? __( 'Fork this post', 'forkposter' ) : __( 'Branch this post', 'forkposter' ),
+			'href'  => forkposter_fork_url( $post->ID, $can_update ? FORKPOSTER_KIND_UPDATE : FORKPOSTER_KIND_BRANCH ),
 		)
 	);
+	if ( ! $can_update ) {
+		return;
+	}
 	$bar->add_node(
 		array(
 			'parent' => 'forkposter-fork',
@@ -194,7 +200,7 @@ function forkposter_render_meta_box( WP_Post $post ) {
 		echo '<p>' . esc_html__( 'The post this was forked from no longer exists.', 'forkposter' ) . '</p>';
 	}
 
-	if ( forkposter_can_fork( $post ) ) {
+	if ( forkposter_can_fork( $post, FORKPOSTER_KIND_UPDATE ) ) {
 		$descriptions = forkposter_kind_descriptions();
 		printf(
 			'<p><a class="button" href="%s">%s</a> <a class="button" href="%s">%s</a></p><p class="description"><strong>%s</strong> %s</p><p class="description"><strong>%s</strong> %s</p>',
@@ -210,8 +216,15 @@ function forkposter_render_meta_box( WP_Post $post ) {
 		if ( $successor ) {
 			echo '<p class="description">' . esc_html__( 'This post already has an update. A new update would replace it as the newest version.', 'forkposter' ) . '</p>';
 		}
+	} elseif ( forkposter_can_fork( $post, FORKPOSTER_KIND_BRANCH ) ) {
+		printf(
+			'<p><a class="button" href="%s">%s</a></p><p class="description">%s</p>',
+			esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ) ),
+			esc_html__( 'Fork as branch', 'forkposter' ),
+			esc_html__( 'This post is scheduled, so it can be branched (for example into the next part of a series) but not updated until it’s published.', 'forkposter' )
+		);
 	} elseif ( ! $parent_id && ! $successor && ! $branches && 'publish' !== $post->post_status ) {
-		echo '<p class="description">' . esc_html__( 'Publish this post to be able to fork it later.', 'forkposter' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Publish this post to be able to fork it later, or schedule it to branch it.', 'forkposter' ) . '</p>';
 	}
 
 	if ( $parent || $successor || $branches ) {

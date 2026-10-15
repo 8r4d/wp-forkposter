@@ -64,6 +64,9 @@
 		}
 
 		var isPublished = state.savedStatus === 'publish';
+		// Scheduled posts can be branched (the next part of a series) but not updated.
+		var canUpdate = data.canFork && isPublished;
+		var canBranch = data.canFork && ( isPublished || state.savedStatus === 'future' );
 		var version = state.meta[ META_VERSION ] || '';
 		var isBranch =
 			( data.isFork && state.meta[ META_KIND ] === 'branch' ) || ( data.branches.length > 0 && ! data.successor );
@@ -162,7 +165,7 @@
 			parts.push( el( 'p', { key: 'missing' }, __( 'The post this was forked from no longer exists.', 'forkposter' ) ) );
 		}
 
-		if ( data.canFork && isPublished ) {
+		if ( canUpdate ) {
 			parts.push(
 				el(
 					'div',
@@ -183,8 +186,28 @@
 						: null
 				)
 			);
+		} else if ( canBranch ) {
+			parts.push(
+				el(
+					'div',
+					{ key: 'fork', className: 'forkposter-panel__fork' },
+					el(
+						'div',
+						{ className: 'forkposter-panel__buttons' },
+						el( Button, { variant: 'secondary', href: data.forkBranchUrl }, __( 'Fork as branch', 'forkposter' ) )
+					),
+					state.isDirty
+						? el( Description, null, __( 'You have unsaved changes. A fork copies the last saved version, so save first.', 'forkposter' ) )
+						: null,
+					el(
+						Description,
+						null,
+						__( 'This post is scheduled, so it can be branched (for example into the next part of a series) but not updated until it’s published.', 'forkposter' )
+					)
+				)
+			);
 		} else if ( ! data.parent && ! data.successor && ! data.branches.length && ! isPublished ) {
-			parts.push( el( Description, { key: 'unpublished' }, __( 'Publish this post to be able to fork it later.', 'forkposter' ) ) );
+			parts.push( el( Description, { key: 'unpublished' }, __( 'Publish this post to be able to fork it later, or schedule it to branch it.', 'forkposter' ) ) );
 		}
 
 		if ( data.parent || data.successor || data.branches.length ) {

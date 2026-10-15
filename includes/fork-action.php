@@ -5,9 +5,22 @@
 
 defined( 'ABSPATH' ) || exit;
 
-function forkposter_can_fork( $post ): bool {
+/**
+ * Whether the current user may fork this post as $kind right now. Published
+ * posts can be forked either way. Scheduled posts can only be branched, so a
+ * series (part one, part two...) can be written ahead and scheduled in turn;
+ * an update would replace a post that isn't live yet.
+ *
+ * @param string $kind FORKPOSTER_KIND_UPDATE or FORKPOSTER_KIND_BRANCH.
+ */
+function forkposter_can_fork( $post, string $kind = FORKPOSTER_KIND_UPDATE ): bool {
 	$post = get_post( $post );
-	return forkposter_user_can_fork( $post ) && 'publish' === $post->post_status;
+	if ( ! forkposter_user_can_fork( $post ) ) {
+		return false;
+	}
+
+	return 'publish' === $post->post_status
+		|| ( 'future' === $post->post_status && FORKPOSTER_KIND_BRANCH === forkposter_sanitize_kind( $kind ) );
 }
 
 /**
@@ -46,11 +59,11 @@ function forkposter_handle_fork_request() {
 	check_admin_referer( 'forkposter_fork_' . $post_id );
 
 	$post = get_post( $post_id );
-	if ( ! forkposter_can_fork( $post ) ) {
-		wp_die( esc_html__( 'You can’t fork this post. Only published posts you can edit can be forked.', 'forkposter' ), 403 );
+	$kind = forkposter_sanitize_kind( isset( $_GET['kind'] ) ? sanitize_key( $_GET['kind'] ) : '' );
+	if ( ! forkposter_can_fork( $post, $kind ) ) {
+		wp_die( esc_html__( 'You can’t fork this post. Only published posts you can edit can be forked, and scheduled posts can only be branched.', 'forkposter' ), 403 );
 	}
 
-	$kind    = forkposter_sanitize_kind( isset( $_GET['kind'] ) ? sanitize_key( $_GET['kind'] ) : '' );
 	$fork_id = forkposter_create_fork( $post, $kind );
 	if ( is_wp_error( $fork_id ) ) {
 		wp_die( esc_html( $fork_id->get_error_message() ) );

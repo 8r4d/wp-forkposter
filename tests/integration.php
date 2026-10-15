@@ -236,6 +236,44 @@ check( 'meta box saves the kind', FORKPOSTER_KIND_UPDATE === forkposter_get_kind
 $_POST = array();
 
 // ---------------------------------------------------------------------------
+section( 'Branching scheduled posts' );
+settings( array() );
+
+$part1 = wp_insert_post( array( 'post_title' => 'Part one', 'post_status' => 'future', 'post_date' => gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS ) ) );
+check( 'scheduled post is scheduled', 'future' === get_post_status( $part1 ) );
+check( 'scheduled post can be branched', forkposter_can_fork( $part1, FORKPOSTER_KIND_BRANCH ) );
+check( 'scheduled post cannot be updated', ! forkposter_can_fork( $part1, FORKPOSTER_KIND_UPDATE ) );
+$draft = wp_insert_post( array( 'post_title' => 'Just a draft', 'post_status' => 'draft' ) );
+check( 'draft still cannot be branched', ! forkposter_can_fork( $draft, FORKPOSTER_KIND_BRANCH ) );
+
+$actions = forkposter_row_actions( array(), get_post( $part1 ) );
+check( 'post list offers only Branch on a scheduled post', isset( $actions['forkposter_branch'] ) && ! isset( $actions['forkposter_fork'] ) );
+ob_start();
+forkposter_render_meta_box( get_post( $part1 ) );
+$box = ob_get_clean();
+check( 'meta box offers only branching on a scheduled post', false !== strpos( $box, 'kind=branch' ) && false === strpos( $box, 'kind=update' ) );
+
+$part2 = forkposter_create_fork( get_post( $part1 ), FORKPOSTER_KIND_BRANCH );
+check( 'branch of a scheduled post is a draft branch', 'draft' === get_post_status( $part2 ) && forkposter_is_branch( $part2 ) );
+check( 'scheduled original untouched while the branch is a draft', ! forkposter_has_moved_on( $part1 ) );
+
+$request = new WP_REST_Request( 'POST', "/forkposter/v1/posts/$part1/fork" );
+check( 'REST refuses an update of a scheduled post', 403 === rest_do_request( $request )->get_status() );
+$request->set_param( 'kind', 'branch' );
+$response = rest_do_request( $request );
+check( 'REST branches a scheduled post', 201 === $response->get_status() );
+wp_delete_post( (int) ( $response->get_data()['id'] ?? 0 ), true );
+$data = rest_do_request( new WP_REST_Request( 'GET', "/wp/v2/posts/$part1" ) )->get_data();
+check( 'REST reports can_branch but not can_fork for a scheduled post', true === $data['forkposter']['can_branch'] && false === $data['forkposter']['can_fork'] );
+
+// Both go live in order: part one (as the scheduler would), then part two.
+wp_publish_post( $part1 );
+check( 'part one is live', 'publish' === get_post_status( $part1 ) );
+publish( $part2, array( 'post_title' => 'Part two' ) );
+check( 'once both are live, part one lists part two', wp_list_pluck( forkposter_get_branches( $part1 ), 'ID' ) === array( $part2 ) );
+check( 'part two links back to part one', false !== strpos( forkposter_notices_html( $part2, 'single' ), get_permalink( $part1 ) ) );
+
+// ---------------------------------------------------------------------------
 section( 'Version numbers' );
 
 check( 'next 1 -> 2', '2' === forkposter_next_version( '1' ) );

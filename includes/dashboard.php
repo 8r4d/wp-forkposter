@@ -298,8 +298,10 @@ function forkposter_render_version_row( WP_Post $post, int $depth ) {
 	} elseif ( is_post_type_viewable( $post->post_type ) && current_user_can( 'edit_post', $post->ID ) ) {
 		$actions[] = sprintf( '<a href="%s">%s</a>', esc_url( get_preview_post_link( $post ) ), esc_html__( 'Preview', 'forkposter' ) );
 	}
-	if ( forkposter_can_fork( $post ) ) {
+	if ( forkposter_can_fork( $post, FORKPOSTER_KIND_UPDATE ) ) {
 		$actions[] = sprintf( '<a href="%s">%s</a>', esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_UPDATE ) ), esc_html__( 'Fork', 'forkposter' ) );
+	}
+	if ( forkposter_can_fork( $post, FORKPOSTER_KIND_BRANCH ) ) {
 		$actions[] = sprintf( '<a href="%s">%s</a>', esc_url( forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ) ), esc_html__( 'Branch', 'forkposter' ) );
 	}
 

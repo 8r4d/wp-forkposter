@@ -84,7 +84,14 @@ function forkposter_register_rest() {
 						'type'        => 'array',
 						'items'       => array( 'type' => 'integer' ),
 					),
-					'can_fork'     => array( 'type' => 'boolean' ),
+					'can_fork'     => array(
+						'description' => __( 'Whether the current user can fork this post as an update.', 'forkposter' ),
+						'type'        => 'boolean',
+					),
+					'can_branch'   => array(
+						'description' => __( 'Whether the current user can fork this post as a branch. Scheduled posts can be branched but not updated.', 'forkposter' ),
+						'type'        => 'boolean',
+					),
 				),
 			),
 		)
@@ -97,10 +104,10 @@ function forkposter_register_rest() {
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => 'forkposter_rest_fork',
 			'permission_callback' => static function ( WP_REST_Request $request ) {
-				if ( forkposter_can_fork( (int) $request['id'] ) ) {
+				if ( forkposter_can_fork( (int) $request['id'], (string) $request['kind'] ) ) {
 					return true;
 				}
-				return new WP_Error( 'forkposter_cannot_fork', __( 'You can’t fork this post. Only published posts you can edit can be forked.', 'forkposter' ), array( 'status' => rest_authorization_required_code() ) );
+				return new WP_Error( 'forkposter_cannot_fork', __( 'You can’t fork this post. Only published posts you can edit can be forked, and scheduled posts can only be branched.', 'forkposter' ), array( 'status' => rest_authorization_required_code() ) );
 			},
 			'args'                => array(
 				'id'   => array( 'type' => 'integer' ),
@@ -167,7 +174,8 @@ function forkposter_rest_post_data( int $post_id ): array {
 		'latest'        => forkposter_rest_post_ref( forkposter_get_latest( $post_id ) ),
 		'branches'      => array_map( 'forkposter_rest_post_ref', forkposter_get_branches( $post_id ) ),
 		'lineage'       => 'publish' === $post->post_status ? wp_list_pluck( forkposter_get_lineage( $post_id ), 'ID' ) : array(),
-		'can_fork'      => forkposter_can_fork( $post ),
+		'can_fork'      => forkposter_can_fork( $post, FORKPOSTER_KIND_UPDATE ),
+		'can_branch'    => forkposter_can_fork( $post, FORKPOSTER_KIND_BRANCH ),
 	);
 }
 
