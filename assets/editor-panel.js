@@ -25,12 +25,55 @@
 	var META_NOTE = '_forkposter_note';
 	var META_KIND = '_forkposter_kind';
 
+	// Mirrors forkposter_number_words() in includes/model.php.
+	function numberWords( n ) {
+		var ones = [ 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen' ];
+		var tens = [ '', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety' ];
+		var sizes = [ [ 1000000, 'million' ], [ 1000, 'thousand' ], [ 100, 'hundred' ] ];
+
+		if ( n < 20 ) {
+			return ones[ n ];
+		}
+		if ( n < 100 ) {
+			return tens[ Math.floor( n / 10 ) ] + ( n % 10 ? '-' + ones[ n % 10 ] : '' );
+		}
+		for ( var i = 0; i < sizes.length; i++ ) {
+			if ( n >= sizes[ i ][ 0 ] ) {
+				var rest = n % sizes[ i ][ 0 ];
+				return numberWords( Math.floor( n / sizes[ i ][ 0 ] ) ) + ' ' + sizes[ i ][ 1 ] + ( rest ? ' ' + numberWords( rest ) : '' );
+			}
+		}
+		return String( n );
+	}
+
+	// Mirrors forkposter_version_words() in includes/model.php.
+	function versionWords( version ) {
+		return version.replace( /(\d)\.(?=\d)/g, '$1 point ' ).replace( /\d+/g, function ( digits ) {
+			return digits.replace( /^0+/, '' ).length > 9 ? digits : numberWords( parseInt( digits, 10 ) );
+		} );
+	}
+
+	// Mirrors forkposter_format_version() in includes/model.php.
 	function formatVersion( version, isBranch ) {
 		if ( ! version ) {
 			return '';
 		}
 		var format = ( isBranch && data.branchFormat ) || data.versionFormat;
-		return format.indexOf( '{version}' ) === -1 ? version : format.split( '{version}' ).join( version );
+		if ( ! /\{(version|words|Words|WORDS)\}/.test( format ) ) {
+			return version;
+		}
+		var words = versionWords( version );
+		var codes = {
+			version: version,
+			words: words,
+			Words: words.replace( /(^|[\s-])([a-z])/g, function ( match, before, letter ) {
+				return before + letter.toUpperCase();
+			} ),
+			WORDS: words.toUpperCase(),
+		};
+		return format.replace( /\{(version|words|Words|WORDS)\}/g, function ( match, code ) {
+			return codes[ code ];
+		} );
 	}
 
 	function PostLink( props ) {

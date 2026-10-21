@@ -269,7 +269,63 @@ function forkposter_version_label( int $post_id ): string {
 	if ( '' === $format ) {
 		$format = (string) forkposter_setting( 'version_format' );
 	}
-	return false === strpos( $format, '{version}' ) ? $version : str_replace( '{version}', $version, $format );
+	return forkposter_format_version( $format, $version );
+}
+
+/**
+ * Fills a version format. {version} is the number as typed ("2.0"); {words},
+ * {Words} and {WORDS} spell it out in lowercase, title case or capitals
+ * ("two point zero", "Two Point Zero", "TWO POINT ZERO"). A format with none
+ * of these codes shows the bare number.
+ */
+function forkposter_format_version( string $format, string $version ): string {
+	if ( ! preg_match( '/\{(version|words|Words|WORDS)\}/', $format ) ) {
+		return $version;
+	}
+	$words = forkposter_version_words( $version );
+	return strtr(
+		$format,
+		array(
+			'{version}' => $version,
+			'{words}'   => $words,
+			'{Words}'   => ucwords( $words, " -\t" ),
+			'{WORDS}'   => strtoupper( $words ),
+		)
+	);
+}
+
+/**
+ * A version number in lowercase words: "2" -> "two", "2.0" -> "two point zero",
+ * "21" -> "twenty-one". Anything that isn't a digit or a dot between digits is
+ * kept as typed, and numbers of a billion or more stay as digits.
+ */
+function forkposter_version_words( string $version ): string {
+	return preg_replace_callback(
+		'/\d+/',
+		function ( $m ) {
+			return strlen( ltrim( $m[0], '0' ) ) > 9 ? $m[0] : forkposter_number_words( (int) $m[0] );
+		},
+		preg_replace( '/(?<=\d)\.(?=\d)/', ' point ', $version )
+	);
+}
+
+function forkposter_number_words( int $n ): string {
+	$ones = array( 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen' );
+	$tens = array( 2 => 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety' );
+
+	if ( $n < 20 ) {
+		return $ones[ $n ];
+	}
+	if ( $n < 100 ) {
+		return $tens[ intdiv( $n, 10 ) ] . ( $n % 10 ? '-' . $ones[ $n % 10 ] : '' );
+	}
+	foreach ( array( 1000000 => 'million', 1000 => 'thousand', 100 => 'hundred' ) as $size => $name ) {
+		if ( $n >= $size ) {
+			$rest = $n % $size;
+			return forkposter_number_words( intdiv( $n, $size ) ) . ' ' . $name . ( $rest ? ' ' . forkposter_number_words( $rest ) : '' );
+		}
+	}
+	return (string) $n;
 }
 
 /**

@@ -311,11 +311,17 @@ check( 'post list state includes the number', 'Earlier version · v.1' === ( $st
 
 settings( array( 'show_versions' => 1, 'version_format' => 'Version {version}' ) );
 check( 'custom format', 'Version 2.0' === forkposter_version_label( $n2 ) );
+settings( array( 'show_versions' => 1, 'version_format' => 'Version {Words}' ) );
+check( 'words format, title case', 'Version Two Point Zero' === forkposter_version_label( $n2 ) );
+check( 'words format, lowercase and capitals', 'twenty-one' === forkposter_format_version( '{words}', '21' ) && 'ONE HUNDRED FIVE' === forkposter_format_version( '{WORDS}', '105' ) );
+check( 'words and numerals together', '3 (three)' === forkposter_format_version( '{version} ({words})', '3' ) );
 settings( array( 'show_versions' => 1, 'branch_format' => 'b{version}' ) );
 check( 'branch format leaves updates alone', 'v.2.0' === forkposter_version_label( $n2 ) );
 update_post_meta( $n2, FORKPOSTER_META_KIND, FORKPOSTER_KIND_BRANCH );
 check( 'branch format applies to branches', 'b2.0' === forkposter_version_label( $n2 ) );
 check( 'branch format applies to the branched original', 'b1' === forkposter_version_label( $n1 ) && false !== strpos( forkposter_badge_html( $n1 ), 'Branched · b1' ) );
+settings( array( 'show_versions' => 1, 'branch_format' => 'Branch {WORDS}' ) );
+check( 'branch format takes word codes', 'Branch TWO POINT ZERO' === forkposter_version_label( $n2 ) );
 settings( array( 'show_versions' => 1 ) );
 check( 'empty branch format falls back to the version format', 'v.2.0' === forkposter_version_label( $n2 ) );
 update_post_meta( $n2, FORKPOSTER_META_KIND, FORKPOSTER_KIND_UPDATE );
