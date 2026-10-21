@@ -326,14 +326,14 @@ function forkposter_history_html( int $post_id, string $wrapper_attributes = 'cl
 		return '';
 	}
 
-	$lineage  = forkposter_get_lineage( $post_id );
-	$branches = forkposter_get_branches( $post_id );
-	if ( count( $lineage ) < 2 && ! $branches ) {
+	$history  = forkposter_get_history( $post_id );
+	$branches = $history['branches'];
+	if ( count( $history['versions'] ) < 2 && ! $branches ) {
 		return '';
 	}
 
 	$items = '';
-	foreach ( $lineage as $version ) {
+	foreach ( $history['versions'] as $version ) {
 		$items .= forkposter_history_item( $version, $post_id );
 	}
 

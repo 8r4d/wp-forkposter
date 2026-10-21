@@ -175,6 +175,27 @@ $history = forkposter_history_html( $idea );
 check( 'history headings come from settings', false !== strpos( $history, '>All versions</p>' ) && false !== strpos( $history, '>Spin-offs</p>' ) );
 settings( array() );
 check( "a branch's history marks it as a branch", false !== strpos( forkposter_history_html( $econ ), 'forkposter-history__kind' ) );
+
+// Every member of a family lists the same versions, whichever branch they sit on.
+$h1 = wp_insert_post( array( 'post_title' => 'Tree', 'post_status' => 'publish' ) );
+$h2 = forkposter_create_fork( get_post( $h1 ) );
+publish( $h2, array( 'post_title' => 'Tree, updated' ) );
+$h3 = forkposter_create_fork( get_post( $h2 ), FORKPOSTER_KIND_BRANCH );
+publish( $h3, array( 'post_title' => 'Tree, branch of the update' ) );
+$h4 = forkposter_create_fork( get_post( $h3 ) );
+publish( $h4, array( 'post_title' => 'Tree, branch updated' ) );
+$expected = array(
+	'versions' => array( $h1, $h2 ),
+	'branches' => array( $h3, $h4 ),
+);
+foreach ( array( $h1, $h2, $h3, $h4 ) as $h ) {
+	$history = forkposter_get_history( $h );
+	check(
+		"history is the whole family from post $h",
+		array_map( fn( $posts ) => wp_list_pluck( $posts, 'ID' ), $history ) === $expected
+	);
+}
+check( "the original's history block shows a branch of its update", false !== strpos( forkposter_history_html( $h1 ), 'Tree, branch of the update' ) && false !== strpos( forkposter_history_html( $h1 ), 'Tree, branch updated' ) );
 check( 'dashboard status is "Branched"', 'branched' === forkposter_version_status( get_post( $idea ) )[1] );
 check( 'post list state is "Branched"', isset( forkposter_post_states( array(), get_post( $idea ) )['forkposter_branched'] ) );
 
@@ -322,6 +343,19 @@ check( 'branch format applies to branches', 'b2.0' === forkposter_version_label(
 check( 'branch format applies to the branched original', 'b1' === forkposter_version_label( $n1 ) && false !== strpos( forkposter_badge_html( $n1 ), 'Branched · b1' ) );
 settings( array( 'show_versions' => 1, 'branch_format' => 'Branch {WORDS}' ) );
 check( 'branch format takes word codes', 'Branch TWO POINT ZERO' === forkposter_version_label( $n2 ) );
+settings( array( 'show_versions' => 1, 'branch_format' => 'b{version}' ) );
+$o1 = wp_insert_post( array( 'post_title' => 'Lone original', 'post_status' => 'publish' ) );
+forkposter_set_version( $o1, '1' );
+$o2 = forkposter_create_fork( get_post( $o1 ), FORKPOSTER_KIND_BRANCH );
+wp_update_post( array( 'ID' => $o2, 'post_status' => 'future', 'post_date' => gmdate( 'Y-m-d H:i:s', time() + WEEK_IN_SECONDS ), 'edit_date' => true ) );
+check( 'a scheduled branch leaves the original on the version format on the site', 'v.1' === forkposter_version_label( $o1 ) );
+require_once ABSPATH . 'wp-admin/includes/class-wp-screen.php';
+require_once ABSPATH . 'wp-admin/includes/screen.php';
+$GLOBALS['current_screen'] = WP_Screen::get( 'posts_page_forkposter-versions' );
+check( 'a scheduled branch puts the original on the branch format in the admin', 'b1' === forkposter_version_label( $o1 ) && 'b2' === forkposter_version_label( $o2 ) );
+unset( $GLOBALS['current_screen'] );
+wp_publish_post( $o2 ); // What WP-Cron does when the scheduled time comes.
+check( 'once the scheduled branch goes live, the site matches what the admin showed', 'b1' === forkposter_version_label( $o1 ) && 'b2' === forkposter_version_label( $o2 ) && false !== strpos( forkposter_badge_html( $o1 ), 'Branched · b1' ) );
 settings( array( 'show_versions' => 1 ) );
 check( 'empty branch format falls back to the version format', 'v.2.0' === forkposter_version_label( $n2 ) );
 update_post_meta( $n2, FORKPOSTER_META_KIND, FORKPOSTER_KIND_UPDATE );

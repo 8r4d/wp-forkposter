@@ -113,6 +113,7 @@ function forkposter_editor_data( WP_Post $post ): array {
 	return array(
 		'kindDescriptions' => forkposter_kind_descriptions(),
 		'branches'         => array_map( 'forkposter_editor_post_ref', forkposter_get_branches( $post->ID ) ),
+		'hasAnyBranch'     => forkposter_has_any_branch( $post->ID ),
 		'forkBranchUrl'    => forkposter_fork_url( $post->ID, FORKPOSTER_KIND_BRANCH ),
 		'versionsEnabled'  => forkposter_versions_enabled(),
 		'versionFormat'    => (string) forkposter_setting( 'version_format' ),

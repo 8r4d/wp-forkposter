@@ -137,6 +137,31 @@ function forkposter_is_branched( int $post_id ): bool {
 }
 
 /**
+ * Whether a post has any branch at all, published or not (drafts, scheduled,
+ * pending). Only the admin uses this; visitors only see published branches.
+ */
+function forkposter_has_any_branch( int $post_id ): bool {
+	return (bool) get_posts(
+		array(
+			'post_type'      => forkposter_post_types(),
+			'post_status'    => 'any',
+			'fields'         => 'ids',
+			'posts_per_page' => 1,
+			'meta_query'     => array(
+				array(
+					'key'   => FORKPOSTER_META_PARENT,
+					'value' => $post_id,
+				),
+				array(
+					'key'   => FORKPOSTER_META_KIND,
+					'value' => FORKPOSTER_KIND_BRANCH,
+				),
+			),
+		)
+	);
+}
+
+/**
  * The newest version in this post's chain (v1 -> v2 -> v3 returns v3 for v1 and v2).
  * Returns null when the post has not been superseded.
  */
@@ -233,6 +258,63 @@ function forkposter_get_lineage( int $post_id ): array {
 	return array_merge( $ancestors, array( $post ), $descendants );
 }
 
+/**
+ * Everything the version history lists for a post, the same from any member of
+ * the family: 'versions' is the original's chain of updates, oldest first, and
+ * 'branches' is every branch in the family, each followed by its own updates
+ * and then its branches. A post outside that tree (an older update that a
+ * newer fork of the same post replaced) gets its own lineage and branches.
+ *
+ * @return array{versions: WP_Post[], branches: WP_Post[]}
+ */
+function forkposter_get_history( int $post_id ): array {
+	$lineage = forkposter_get_lineage( $post_id );
+	if ( ! $lineage ) {
+		return array(
+			'versions' => array(),
+			'branches' => array(),
+		);
+	}
+
+	$seen     = array();
+	$chain_of = function ( WP_Post $post ) use ( &$seen ): array {
+		$chain = array();
+		while ( $post && ! isset( $seen[ $post->ID ] ) ) {
+			$seen[ $post->ID ] = true;
+			$chain[]           = $post;
+			$post              = forkposter_get_successor( $post->ID );
+		}
+		return $chain;
+	};
+
+	$versions = $chain_of( $lineage[0] );
+	$branches = array();
+	$add      = function ( array $chain ) use ( &$add, &$branches, &$seen, $chain_of ) {
+		foreach ( $chain as $post ) {
+			foreach ( forkposter_get_branches( $post->ID ) as $branch ) {
+				if ( ! isset( $seen[ $branch->ID ] ) ) {
+					$branch_chain = $chain_of( $branch );
+					$branches     = array_merge( $branches, $branch_chain );
+					$add( $branch_chain );
+				}
+			}
+		}
+	};
+	$add( $versions );
+
+	if ( ! isset( $seen[ $post_id ] ) ) {
+		return array(
+			'versions' => $lineage,
+			'branches' => forkposter_get_branches( $post_id ),
+		);
+	}
+
+	return array(
+		'versions' => $versions,
+		'branches' => $branches,
+	);
+}
+
 function forkposter_versions_enabled(): bool {
 	return (bool) forkposter_setting( 'show_versions' );
 }
@@ -256,7 +338,8 @@ function forkposter_set_version( int $post_id, string $version ) {
 /**
  * A post's version formatted for display ("v.2.0"), or '' when version numbers
  * are off or the post has none. Branches, and originals that have branches but
- * no update, use the branch format when one is set.
+ * no update, use the branch format when one is set. In the admin, unpublished
+ * branches count too, so an original matches its draft or scheduled branches.
  */
 function forkposter_version_label( int $post_id ): string {
 	$version = forkposter_versions_enabled() ? forkposter_get_version( $post_id ) : '';
@@ -264,7 +347,8 @@ function forkposter_version_label( int $post_id ): string {
 		return '';
 	}
 
-	$branchy = forkposter_is_branch( $post_id ) || ( forkposter_is_branched( $post_id ) && ! forkposter_is_superseded( $post_id ) );
+	$branched = is_admin() ? forkposter_has_any_branch( $post_id ) : forkposter_is_branched( $post_id );
+	$branchy  = forkposter_is_branch( $post_id ) || ( $branched && ! forkposter_is_superseded( $post_id ) );
 	$format  = $branchy ? (string) forkposter_setting( 'branch_format' ) : '';
 	if ( '' === $format ) {
 		$format = (string) forkposter_setting( 'version_format' );

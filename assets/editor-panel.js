@@ -112,7 +112,7 @@
 		var canBranch = data.canFork && ( isPublished || state.savedStatus === 'future' );
 		var version = state.meta[ META_VERSION ] || '';
 		var isBranch =
-			( data.isFork && state.meta[ META_KIND ] === 'branch' ) || ( data.branches.length > 0 && ! data.successor );
+			( data.isFork && state.meta[ META_KIND ] === 'branch' ) || ( data.hasAnyBranch && ! data.successor );
 		var parts = [];
 
 		if ( data.versionsEnabled ) {
