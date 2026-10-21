@@ -203,7 +203,7 @@ check( 'series has one part per branch, each holding its updates', array_map( fn
 $series = forkposter_series_html( $h1 );
 check( 'series list is one ordered list of the newest version of each part', 1 === substr_count( $series, '<ol>' ) && 2 === substr_count( $series, '<li' ) && false !== strpos( $series, get_permalink( $h2 ) ) && false !== strpos( $series, get_permalink( $h4 ) ) && false === strpos( $series, get_permalink( $h3 ) ) );
 check( 'series list marks the part being read', false !== strpos( $series, 'forkposter-history__current"><a href="' . esc_url( get_permalink( $h2 ) ) ) );
-check( 'series list on the newest version leaves its own part unlinked', false !== strpos( forkposter_series_html( $h4 ), 'aria-current="page">Tree, branch updated</li>' ) );
+check( 'series list on the newest version leaves its own part unlinked', false !== strpos( forkposter_series_html( $h4 ), 'aria-current="page">Tree, branch updated <span' ) );
 check( 'series list labels branches', false !== strpos( forkposter_series_html( $h1 ), 'forkposter-history__kind' ) );
 check( 'plain series list has no branch labels', false === strpos( forkposter_series_html( $h1, 'class="forkposter-series"', true ), 'forkposter-history__kind' ) );
 $GLOBALS['post'] = get_post( $h1 );

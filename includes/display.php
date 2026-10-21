@@ -423,7 +423,8 @@ function forkposter_series_html( int $post_id, string $wrapper_attributes = 'cla
 			$label = esc_html( $newest->post_title ?: __( '(no title)', 'forkposter' ) );
 		} else {
 			$label = esc_html( forkposter_title_with_version( $newest ) );
-			if ( forkposter_is_branch( $newest->ID ) ) {
+			// The part is a branch even when its newest version is an update of it.
+			if ( forkposter_is_branch( $part[0]->ID ) ) {
 				$label .= sprintf( ' <span class="forkposter-history__kind">%s</span>', esc_html( forkposter_setting( 'branch_label' ) ) );
 			}
 		}
