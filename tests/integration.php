@@ -354,6 +354,13 @@ require_once ABSPATH . 'wp-admin/includes/screen.php';
 $GLOBALS['current_screen'] = WP_Screen::get( 'posts_page_forkposter-versions' );
 check( 'a scheduled branch puts the original on the branch format in the admin', 'b1' === forkposter_version_label( $o1 ) && 'b2' === forkposter_version_label( $o2 ) );
 unset( $GLOBALS['current_screen'] );
+simulate_query( array( 'p' => $o2, 'preview' => 'true' ) );
+check( 'previewing the scheduled branch shows the original as it will be at launch', 'b1' === forkposter_version_label( $o1 ) && false !== strpos( forkposter_notices_html( $o2, 'single' ), 'Lone original (b1)' ) );
+check( 'previewing the scheduled branch shows its branch badge', false !== strpos( forkposter_badge_html( $o2 ), 'Branch · b2' ) );
+check( 'previewing the scheduled branch lists it in the history', wp_list_pluck( forkposter_get_history( $o1 )['branches'], 'ID' ) === array( $o2 ) );
+check( 'a preview changes nothing stored', array() === get_post_meta( $o1, FORKPOSTER_META_BRANCHED_INTO ) && ! has_term( FORKPOSTER_TERM_SUPERSEDED, FORKPOSTER_TAXONOMY, $o1 ) );
+simulate_query( array( 'p' => $o1 ) );
+check( 'outside the preview the site is unchanged', 'v.1' === forkposter_version_label( $o1 ) && '' === forkposter_badge_html( $o2 ) );
 wp_publish_post( $o2 ); // What WP-Cron does when the scheduled time comes.
 check( 'once the scheduled branch goes live, the site matches what the admin showed', 'b1' === forkposter_version_label( $o1 ) && 'b2' === forkposter_version_label( $o2 ) && false !== strpos( forkposter_badge_html( $o1 ), 'Branched · b1' ) );
 settings( array( 'show_versions' => 1 ) );

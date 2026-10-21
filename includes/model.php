@@ -93,21 +93,54 @@ function forkposter_is_branch( int $post_id ): bool {
 }
 
 /**
+ * Whether the page being rendered is a preview of this post.
+ */
+function forkposter_is_previewed( int $post_id ): bool {
+	return ! is_admin() && isset( $GLOBALS['wp_query'] ) && is_preview() && get_queried_object_id() === $post_id;
+}
+
+/**
+ * Whether a post counts as live: published, or being previewed. A preview of a
+ * scheduled or draft fork shows the labels, notices and lists it will have
+ * once it's published.
+ */
+function forkposter_counts_as_published( ?WP_Post $post ): bool {
+	return $post && ( 'publish' === $post->post_status || forkposter_is_previewed( $post->ID ) );
+}
+
+/**
  * Whether $fork is a published fork of $post_id of the given kind. Links stored
  * on the original only count when this holds, so a stray copy of the meta (for
  * example from a duplicate-post plugin) is ignored.
  */
 function forkposter_is_published_fork_of( ?WP_Post $fork, int $post_id, string $kind ): bool {
-	return $fork
-		&& 'publish' === $fork->post_status
+	return forkposter_counts_as_published( $fork )
 		&& forkposter_get_parent_id( $fork->ID ) === $post_id
 		&& forkposter_get_kind( $fork->ID ) === $kind;
 }
 
 /**
- * The published update that replaced this post.
+ * The unpublished fork of $post_id being previewed, if the page is a preview of one.
+ */
+function forkposter_previewed_fork_of( int $post_id, string $kind ): ?WP_Post {
+	if ( is_admin() || ! isset( $GLOBALS['wp_query'] ) || ! is_preview() ) {
+		return null;
+	}
+
+	$fork = get_queried_object();
+	return $fork instanceof WP_Post && 'publish' !== $fork->post_status && forkposter_is_published_fork_of( $fork, $post_id, $kind ) ? $fork : null;
+}
+
+/**
+ * The published update that replaced this post. In a preview of an update to
+ * this post, that update, as it will be once published.
  */
 function forkposter_get_successor( int $post_id ): ?WP_Post {
+	$previewed = forkposter_previewed_fork_of( $post_id, FORKPOSTER_KIND_UPDATE );
+	if ( $previewed ) {
+		return $previewed;
+	}
+
 	$successor_id = (int) get_post_meta( $post_id, FORKPOSTER_META_SUPERSEDED_BY, true );
 	$successor    = $successor_id ? get_post( $successor_id ) : null;
 
@@ -115,7 +148,8 @@ function forkposter_get_successor( int $post_id ): ?WP_Post {
 }
 
 /**
- * This post's published branches, oldest first.
+ * This post's published branches, oldest first, plus the branch being
+ * previewed, if any.
  *
  * @return WP_Post[]
  */
@@ -126,6 +160,11 @@ function forkposter_get_branches( int $post_id ): array {
 		if ( forkposter_is_published_fork_of( $branch, $post_id, FORKPOSTER_KIND_BRANCH ) ) {
 			$branches[] = $branch;
 		}
+	}
+
+	$previewed = forkposter_previewed_fork_of( $post_id, FORKPOSTER_KIND_BRANCH );
+	if ( $previewed ) {
+		$branches[] = $previewed;
 	}
 
 	usort( $branches, fn( $a, $b ) => strcmp( $a->post_date_gmt, $b->post_date_gmt ) ?: $a->ID <=> $b->ID );

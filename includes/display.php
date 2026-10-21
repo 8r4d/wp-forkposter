@@ -91,7 +91,7 @@ function forkposter_role( int $post_id ): ?array {
 	if ( forkposter_is_branched( $post_id ) ) {
 		return array( 'key' => 'branched', 'label' => (string) forkposter_setting( 'branched_label' ) );
 	}
-	if ( forkposter_is_fork( $post_id ) && 'publish' === get_post_status( $post_id ) ) {
+	if ( forkposter_is_fork( $post_id ) && forkposter_counts_as_published( get_post( $post_id ) ) ) {
 		return forkposter_is_branch( $post_id )
 			? array( 'key' => 'branch', 'label' => (string) forkposter_setting( 'branch_label' ) )
 			: array( 'key' => 'fork', 'label' => (string) forkposter_setting( 'new_label' ) );
