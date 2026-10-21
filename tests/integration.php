@@ -528,6 +528,32 @@ do_action( 'dp_duplicate_post', $rewrite_copy, get_post( $t1 ), 'draft' );
 check( 'Rewrite & Republish copy keeps it', has_term( 'superseded', 'post_tag', $rewrite_copy ) );
 
 // ---------------------------------------------------------------------------
+section( 'Outbooks' );
+settings( array( 'show_versions' => 1 ) );
+
+$ob1 = wp_insert_post( array( 'post_title' => 'Book piece', 'post_status' => 'publish' ) );
+update_post_meta( $ob1, '_outbooks_note', 'Written the week of the flood.' );
+update_post_meta( $ob1, '_outbooks_exclude', '1' );
+$ob2 = forkposter_create_fork( get_post( $ob1 ) );
+check( 'forks keep the book note and exclude flag', 'Written the week of the flood.' === get_post_meta( $ob2, '_outbooks_note', true ) && '1' === get_post_meta( $ob2, '_outbooks_exclude', true ) );
+check( 'outline labels an unpublished fork', array( 'Fork · v.2' ) === apply_filters( 'outbooks_outline_post_labels', array(), get_post( $ob2 ) ) );
+publish( $ob2 );
+check( 'outline labels the earlier version', array( 'Earlier version · v.1' ) === apply_filters( 'outbooks_outline_post_labels', array(), get_post( $ob1 ) ) );
+check( 'outline labels the revision', array( 'Revised · v.2' ) === apply_filters( 'outbooks_outline_post_labels', array(), get_post( $ob2 ) ) );
+$solo = wp_insert_post( array( 'post_title' => 'Unforked', 'post_status' => 'publish' ) );
+check( 'outline leaves other posts alone', array( 'x' ) === apply_filters( 'outbooks_outline_post_labels', array( 'x' ), get_post( $solo ) ) );
+
+$doc = new DOMDocument( '1.0', 'UTF-8' );
+$doc->loadHTML( '<?xml encoding="UTF-8"?><html><body><div id="outbooks-root">' . forkposter_notices_html( $ob1, 'single' ) . '<p>Body text.</p>' . forkposter_history_html( $ob1, 'class="wp-block-forkposter-history forkposter-history"' ) . '<p class="forkposter-noticeboard">Keep me.</p></div></body></html>' );
+$root = $doc->getElementById( 'outbooks-root' );
+$before = $doc->saveHTML( $root );
+check( 'book content starts with a notice and history', false !== strpos( $before, '<aside' ) && false !== strpos( $before, '<nav' ) );
+do_action( 'outbooks_process_dom', $root, $doc, true );
+$out = $doc->saveHTML( $root );
+check( 'notices and history are removed from books', false === strpos( $out, '<aside' ) && false === strpos( $out, '<nav' ) && false !== strpos( $out, 'Body text.' ) );
+check( 'only whole class names are matched', false !== strpos( $out, 'Keep me.' ) );
+
+// ---------------------------------------------------------------------------
 section( 'Uninstall' );
 
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {

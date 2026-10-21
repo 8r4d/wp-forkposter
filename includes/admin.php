@@ -75,20 +75,40 @@ function forkposter_post_states( array $states, WP_Post $post ): array {
 		return $states;
 	}
 
+	$state = forkposter_admin_state( $post );
+	if ( $state ) {
+		$states[ 'forkposter_' . $state['key'] ] = esc_html( $state['label'] );
+	}
+
+	return $states;
+}
+
+/**
+ * How a post relates to its versions, in plain text for admin lists, with its
+ * version number: "Earlier version · v.1", or "Branch · v.3" for an unpublished
+ * fork. Null for posts that aren't part of a family.
+ *
+ * @return array{key: string, label: string}|null
+ */
+function forkposter_admin_state( WP_Post $post ): ?array {
 	$version = forkposter_version_label( $post->ID );
 	$suffix  = '' === $version ? '' : ' · ' . $version;
 	$role    = forkposter_role( $post->ID );
 
 	if ( $role ) {
-		$states[ 'forkposter_' . $role['key'] ] = esc_html( $role['label'] . $suffix );
-	} elseif ( forkposter_get_parent_id( $post->ID ) ) {
-		// An unpublished fork.
-		$states['forkposter_draft'] = esc_html(
-			( forkposter_is_branch( $post->ID ) ? __( 'Branch', 'forkposter' ) : __( 'Fork', 'forkposter' ) ) . $suffix
+		return array(
+			'key'   => $role['key'],
+			'label' => $role['label'] . $suffix,
 		);
 	}
-
-	return $states;
+	if ( forkposter_get_parent_id( $post->ID ) ) {
+		// An unpublished fork.
+		return array(
+			'key'   => 'draft',
+			'label' => ( forkposter_is_branch( $post->ID ) ? __( 'Branch', 'forkposter' ) : __( 'Fork', 'forkposter' ) ) . $suffix,
+		);
+	}
+	return null;
 }
 
 add_action( 'add_meta_boxes', 'forkposter_add_meta_box' );

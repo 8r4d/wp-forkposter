@@ -1,6 +1,6 @@
 <?php
 /**
- * Compatibility with page cache plugins and Yoast Duplicate Post.
+ * Compatibility with page cache plugins, Yoast Duplicate Post and Outbooks.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -113,4 +113,45 @@ function forkposter_duplicate_post_remove_tag( $new_post_id, $post ) {
 	if ( $tag && ! get_post_meta( $new_post_id, '_dp_is_rewrite_republish_copy', true ) ) {
 		wp_remove_object_terms( (int) $new_post_id, $tag, 'post_tag' );
 	}
+}
+
+/*
+ * Outbooks.
+ *
+ * Outbooks compiles posts into EPUB and PDF books. Version notices, badges and
+ * the version history are navigation for the site, so they're kept out of
+ * books, whichever way the book is exported (exports from the admin already
+ * skip the notices; exports from WP-CLI and history blocks in post content
+ * don't). Its outline labels each version so a book can be curated, and forks
+ * keep the post's book settings.
+ */
+
+add_action( 'outbooks_process_dom', 'forkposter_outbooks_remove_navigation', 10, 2 );
+function forkposter_outbooks_remove_navigation( $root, $doc ) {
+	if ( ! $root instanceof DOMElement || ! $doc instanceof DOMDocument ) {
+		return;
+	}
+
+	$xpath = new DOMXPath( $doc );
+	$query = './/*[contains(concat(" ", normalize-space(@class), " "), " forkposter-notice ")'
+		. ' or contains(concat(" ", normalize-space(@class), " "), " forkposter-history ")'
+		. ' or contains(concat(" ", normalize-space(@class), " "), " forkposter-badge ")]';
+	foreach ( iterator_to_array( $xpath->query( $query, $root ) ) as $node ) {
+		$node->parentNode->removeChild( $node );
+	}
+}
+
+add_filter( 'outbooks_outline_post_labels', 'forkposter_outbooks_outline_labels', 10, 2 );
+function forkposter_outbooks_outline_labels( $labels, $post ) {
+	$state = $post instanceof WP_Post && forkposter_supports( $post ) ? forkposter_admin_state( $post ) : null;
+	if ( $state ) {
+		$labels[] = $state['label'];
+	}
+	return $labels;
+}
+
+// The book note and "leave out of all books" flag belong to the piece, so new versions keep them.
+add_filter( 'forkposter_copy_meta_keys', 'forkposter_outbooks_copy_meta_keys' );
+function forkposter_outbooks_copy_meta_keys( $keys ) {
+	return array_merge( (array) $keys, array( '_outbooks_note', '_outbooks_exclude' ) );
 }
