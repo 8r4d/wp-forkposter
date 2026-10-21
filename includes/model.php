@@ -354,6 +354,33 @@ function forkposter_get_history( int $post_id ): array {
 	);
 }
 
+/**
+ * The family as a series of parts, for the Series list: the original and each
+ * branch is a part, holding its chain of updates (oldest first). Parts are
+ * ordered by when they were first published.
+ *
+ * @return WP_Post[][]
+ */
+function forkposter_get_series( int $post_id ): array {
+	$history = forkposter_get_history( $post_id );
+	$parts   = array();
+	foreach ( array_merge( $history['versions'], $history['branches'] ) as $post ) {
+		// Updates follow the post they update, so a new part starts at each branch.
+		if ( ! $parts || forkposter_is_branch( $post->ID ) ) {
+			$parts[] = array();
+		}
+		$parts[ count( $parts ) - 1 ][] = $post;
+	}
+
+	usort(
+		$parts,
+		function ( array $a, array $b ): int {
+			return strcmp( $a[0]->post_date, $b[0]->post_date );
+		}
+	);
+	return $parts;
+}
+
 function forkposter_versions_enabled(): bool {
 	return (bool) forkposter_setting( 'show_versions' );
 }

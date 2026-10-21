@@ -19,6 +19,7 @@ function forkposter_default_settings(): array {
 		'branch_notice'     => __( 'This piece branches off from an earlier one: {link} ({date})', 'forkposter' ),
 		'history_heading'   => __( 'Versions of this piece', 'forkposter' ),
 		'branches_heading'  => __( 'Branched into', 'forkposter' ),
+		'series_heading'    => __( 'In this series', 'forkposter' ),
 		'show_title_badges' => 1,
 		'show_list_notes'   => 1,
 		'feed_labels'       => 1,
@@ -125,6 +126,7 @@ function forkposter_register_settings() {
 		'branch_notice'     => array( 'forkposter_branches', 'textarea', __( 'Notice on branches', 'forkposter' ), __( '{link} is the earlier post’s title, linked. {date} is its publish date.', 'forkposter' ) ),
 		'history_heading'   => array( 'forkposter_history', 'text', __( 'Versions heading', 'forkposter' ), __( 'Shown above the list of updates.', 'forkposter' ) ),
 		'branches_heading'  => array( 'forkposter_history', 'text', __( 'Branches heading', 'forkposter' ), __( 'Shown above the list of branches.', 'forkposter' ) ),
+		'series_heading'    => array( 'forkposter_history', 'text', __( 'Series heading', 'forkposter' ), __( 'Shown above the Series list block, which numbers the original and its branches as parts.', 'forkposter' ) ),
 		'show_title_badges' => array( 'forkposter_display', 'checkbox', __( 'Title badges', 'forkposter' ), __( 'Add the label next to post titles on the site.', 'forkposter' ) ),
 		'show_list_notes'   => array( 'forkposter_display', 'checkbox', __( 'Notes in post lists', 'forkposter' ), __( 'Show a short version note above the excerpt on the home page and archives.', 'forkposter' ) ),
 		'feed_labels'       => array( 'forkposter_display', 'checkbox', __( 'Label RSS items', 'forkposter' ), __( 'Prefix older posts’ feed titles with the label and add the link to the newer version.', 'forkposter' ) ),
@@ -156,7 +158,7 @@ function forkposter_render_branches_section() {
 }
 
 function forkposter_render_history_section() {
-	echo '<p>' . esc_html__( 'Headings in the Version history block and the [forkposter_history] shortcode.', 'forkposter' ) . '</p>';
+	echo '<p>' . esc_html__( 'Headings in the Version history and Series list blocks and their [forkposter_history] and [forkposter_series] shortcodes.', 'forkposter' ) . '</p>';
 }
 
 function forkposter_render_colors_section() {

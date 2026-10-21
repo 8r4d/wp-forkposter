@@ -1,0 +1,36 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "forkposter/series",
+	"title": "Series list",
+	"category": "widgets",
+	"icon": "editor-ol",
+	"description": "Lists the original and each of its branches as one numbered list, oldest first, for pieces written in parts.",
+	"keywords": [ "series", "parts", "branches", "fork" ],
+	"textdomain": "forkposter",
+	"usesContext": [ "postId", "postType" ],
+	"attributes": {
+		"plainTitles": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"supports": {
+		"html": false,
+		"color": {
+			"text": true,
+			"background": true,
+			"link": true
+		},
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "file:./index.js",
+	"style": "forkposter",
+	"render": "file:./render.php"
+}

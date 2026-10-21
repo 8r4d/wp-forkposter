@@ -377,3 +377,70 @@ function forkposter_history_item( WP_Post $version, int $current_id ): string {
 		? '<li class="forkposter-history__current" aria-current="page">' . $label . '</li>'
 		: '<li><a href="' . esc_url( get_permalink( $version ) ) . '">' . $label . '</a></li>';
 }
+
+/**
+ * [forkposter_series] lists the original and its branches as numbered parts,
+ * for pieces written as part 1, 2, 3. Use [forkposter_series id="123"] to show
+ * another post's series, and plain="1" to leave out version numbers and branch
+ * labels. The Series list block (blocks.php) renders the same list.
+ */
+add_shortcode( 'forkposter_series', 'forkposter_series_shortcode' );
+function forkposter_series_shortcode( $atts ): string {
+	$atts = shortcode_atts(
+		array(
+			'id'    => 0,
+			'plain' => 0,
+		),
+		$atts,
+		'forkposter_series'
+	);
+	$post_id = $atts['id'] ? absint( $atts['id'] ) : get_the_ID();
+
+	return $post_id ? forkposter_series_html( $post_id, 'class="forkposter-series"', (bool) $atts['plain'] ) : '';
+}
+
+/**
+ * The series list for a post, or '' if it has no branches. Each part links to
+ * its newest version; the part holding the post being viewed is marked.
+ *
+ * @param string $wrapper_attributes Attributes for the <nav>, already escaped.
+ * @param bool   $plain              True for bare titles, without version numbers or branch labels.
+ */
+function forkposter_series_html( int $post_id, string $wrapper_attributes = 'class="forkposter-series"', bool $plain = false ): string {
+	if ( ! forkposter_supports( $post_id ) ) {
+		return '';
+	}
+
+	$parts = forkposter_get_series( $post_id );
+	if ( count( $parts ) < 2 ) {
+		return '';
+	}
+
+	$items = '';
+	foreach ( $parts as $part ) {
+		$newest = end( $part );
+		if ( $plain ) {
+			$label = esc_html( $newest->post_title ?: __( '(no title)', 'forkposter' ) );
+		} else {
+			$label = esc_html( forkposter_title_with_version( $newest ) );
+			if ( forkposter_is_branch( $newest->ID ) ) {
+				$label .= sprintf( ' <span class="forkposter-history__kind">%s</span>', esc_html( forkposter_setting( 'branch_label' ) ) );
+			}
+		}
+		if ( $newest->ID === $post_id ) {
+			$items .= '<li class="forkposter-history__current" aria-current="page">' . $label . '</li>';
+			continue;
+		}
+		// On an earlier version of a part, mark the part but still link to its newest version.
+		$current = in_array( $post_id, wp_list_pluck( $part, 'ID' ), true ) ? ' class="forkposter-history__current"' : '';
+		$items  .= '<li' . $current . '><a href="' . esc_url( get_permalink( $newest ) ) . '">' . $label . '</a></li>';
+	}
+
+	// Shares the history's classes so it's styled alike and kept out of Outbooks books.
+	return sprintf(
+		'<nav %1$s aria-label="%2$s"><p class="forkposter-history__heading">%2$s</p><ol>%3$s</ol></nav>',
+		str_replace( 'class="', 'class="forkposter-history ', $wrapper_attributes ),
+		esc_attr( forkposter_setting( 'series_heading' ) ),
+		$items
+	);
+}

@@ -196,6 +196,21 @@ foreach ( array( $h1, $h2, $h3, $h4 ) as $h ) {
 	);
 }
 check( "the original's history block shows a branch of its update", false !== strpos( forkposter_history_html( $h1 ), 'Tree, branch of the update' ) && false !== strpos( forkposter_history_html( $h1 ), 'Tree, branch updated' ) );
+
+// The series list numbers each part (the original and each branch) once, linking its newest version.
+$series = forkposter_get_series( $h3 );
+check( 'series has one part per branch, each holding its updates', array_map( fn( $part ) => wp_list_pluck( $part, 'ID' ), $series ) === array( array( $h1, $h2 ), array( $h3, $h4 ) ) );
+$series = forkposter_series_html( $h1 );
+check( 'series list is one ordered list of the newest version of each part', 1 === substr_count( $series, '<ol>' ) && 2 === substr_count( $series, '<li' ) && false !== strpos( $series, get_permalink( $h2 ) ) && false !== strpos( $series, get_permalink( $h4 ) ) && false === strpos( $series, get_permalink( $h3 ) ) );
+check( 'series list marks the part being read', false !== strpos( $series, 'forkposter-history__current"><a href="' . esc_url( get_permalink( $h2 ) ) ) );
+check( 'series list on the newest version leaves its own part unlinked', false !== strpos( forkposter_series_html( $h4 ), 'aria-current="page">Tree, branch updated</li>' ) );
+check( 'series list labels branches', false !== strpos( forkposter_series_html( $h1 ), 'forkposter-history__kind' ) );
+check( 'plain series list has no branch labels', false === strpos( forkposter_series_html( $h1, 'class="forkposter-series"', true ), 'forkposter-history__kind' ) );
+$GLOBALS['post'] = get_post( $h1 );
+setup_postdata( $GLOBALS['post'] );
+check( 'series block and shortcode render', false !== strpos( do_blocks( '<!-- wp:forkposter/series /-->' ), 'wp-block-forkposter-series' ) && false !== strpos( do_shortcode( '[forkposter_series]' ), 'In this series' ) );
+check( 'plain option reaches the block and shortcode', false === strpos( do_blocks( '<!-- wp:forkposter/series {"plainTitles":true} /-->' ), 'forkposter-history__kind' ) && false === strpos( do_shortcode( '[forkposter_series plain="1"]' ), 'forkposter-history__kind' ) );
+wp_reset_postdata();
 check( 'dashboard status is "Branched"', 'branched' === forkposter_version_status( get_post( $idea ) )[1] );
 check( 'post list state is "Branched"', isset( forkposter_post_states( array(), get_post( $idea ) )['forkposter_branched'] ) );
 
@@ -377,6 +392,7 @@ check( 'history block renders on a post with versions', false !== strpos( $block
 wp_reset_postdata();
 $solo = wp_insert_post( array( 'post_title' => 'Standalone', 'post_status' => 'publish' ) );
 check( 'history renders nothing on a post without versions', '' === forkposter_history_html( $solo ) );
+check( 'series renders nothing on a post without branches', '' === forkposter_series_html( $solo ) && '' === forkposter_series_html( $n2 ) );
 
 // ---------------------------------------------------------------------------
 section( 'Classic editor meta box' );
